@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Incidencias ACC · LI-114</title>
+  <meta name="description" content="Seguimiento de incidencias de revisión en ACC/Forma — LI-114 Otuzco–Usquil (CUI 2597478).">
+  <link rel="stylesheet" href="styles.css?v=2">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" defer></script>
+  <script src="app.js?v=3" defer></script>
+</head>
+<body>
+  <header class="top">
+    <div class="titulo">
+      <h1>Incidencias ACC · LI-114 Otuzco–Usquil</h1>
+      <p class="corte" id="corte">Cargando datos…</p>
+    </div>
+    <button class="tema" id="btnTema" type="button" aria-label="Cambiar tema claro/oscuro">◐</button>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Páginas del dashboard">
+    <button role="tab" data-tab="resumen">1 · Resumen</button>
+    <button role="tab" data-tab="tendencia">2 · Tendencia</button>
+    <button role="tab" data-tab="antiguedad">3 · Antigüedad</button>
+    <button role="tab" data-tab="especialidad">4 · Especialidad y documento</button>
+    <button role="tab" data-tab="detalle">5 · Detalle</button>
+    <button role="tab" data-tab="calidad">6 · Calidad de datos</button>
+  </nav>
+
+  <section class="filtros" aria-label="Filtros (aplican a todas las páginas)">
+    <label>Revisor <select id="fRev"></select></label>
+    <label>Entregable <select id="fEnt"></select></label>
+    <label>Tipo de revisión <select id="fTrv"></select></label>
+    <label>Fase documento <select id="fFase"></select></label>
+    <button type="button" id="btnLimpiar" class="link">Limpiar filtros</button>
+  </section>
+
+  <main>
+    <!-- 1 Resumen -->
+    <section class="pagina" id="p-resumen" hidden>
+      <div class="tiles" id="tilesResumen"></div>
+      <div class="grid g-1-2">
+        <article class="card">
+          <h2>KPI I1 · incidencias resueltas</h2>
+          <p class="nota">Cerradas / identificadas. Meta ≥ 75 %, semanal desde E3.3 (EIR p.25–26).</p>
+          <div id="kpiI1"></div>
+        </article>
+        <article class="card">
+          <h2>¿Dónde está la pelota? Situación por revisor</h2>
+          <div class="chart h-sm"><canvas id="chSituacion"></canvas></div>
+        </article>
+      </div>
+      <article class="card">
+        <h2>Saldo no cerrado por semana</h2>
+        <p class="nota">Incidencias creadas y aún no cerradas al final de cada semana (las Completadas cuentan como no cerradas).</p>
+        <div class="chart"><canvas id="chSaldo"></canvas></div>
+      </article>
+      <article class="card">
+        <h2>Avance entre cortes</h2>
+        <p class="nota">Una fila por exportación publicada. Muestra cómo avanza el equipo de un corte a otro.</p>
+        <div id="historial"></div>
+      </article>
+    </section>
+
+    <!-- 2 Tendencia -->
+    <section class="pagina" id="p-tendencia" hidden>
+      <article class="card">
+        <h2>Creadas vs. cerradas por semana</h2>
+        <div class="chart"><canvas id="chSemanal"></canvas></div>
+      </article>
+      <div class="grid g-2">
+        <article class="card">
+          <h2>Acumulados</h2>
+          <p class="nota">La distancia entre las dos líneas es el saldo no cerrado.</p>
+          <div class="chart"><canvas id="chAcum"></canvas></div>
+        </article>
+        <article class="card">
+          <h2>Resumen mensual</h2>
+          <div id="tablaMensual"></div>
+        </article>
+      </div>
+    </section>
+
+    <!-- 3 Antigüedad -->
+    <section class="pagina" id="p-antiguedad" hidden>
+      <div class="tiles" id="tilesAntig"></div>
+      <article class="card">
+        <h2>No cerradas por antigüedad</h2>
+        <div class="chart h-sm"><canvas id="chRangos"></canvas></div>
+      </article>
+      <article class="card">
+        <h2>Las 25 no cerradas más antiguas</h2>
+        <p class="nota">Clic en una fila para abrir su documento en <b>5 · Detalle</b>.</p>
+        <div id="tablaAntiguas" class="scroll"></div>
+      </article>
+    </section>
+
+    <!-- 4 Especialidad -->
+    <section class="pagina" id="p-especialidad" hidden>
+      <div class="grid g-2">
+        <article class="card">
+          <h2>Incidencias por especialidad y situación</h2>
+          <p class="nota">Código del Tipo sin el prefijo del revisor (significado por validar con la Librería ANIN). Clic en una fila → Detalle.</p>
+          <div id="matrizEsp" class="scroll"></div>
+        </article>
+        <article class="card">
+          <h2>15 documentos con más incidencias no cerradas</h2>
+          <p class="nota">Clic en una barra → Detalle de ese documento.</p>
+          <div class="chart h-lg"><canvas id="chDocs"></canvas></div>
+        </article>
+      </div>
+      <article class="card">
+        <h2>Volumen vs. velocidad de cierre por especialidad</h2>
+        <p class="nota">Arriba a la derecha: muchas observaciones que además se cierran lento. Tamaño = no cerradas.</p>
+        <div class="chart"><canvas id="chScatter"></canvas></div>
+      </article>
+    </section>
+
+    <!-- 5 Detalle -->
+    <section class="pagina" id="p-detalle" hidden>
+      <article class="card">
+        <div class="barra-detalle">
+          <input type="search" id="buscar" placeholder="Buscar en ID, título, descripción, documento, comentarios…" aria-label="Buscar">
+          <label>Situación
+            <select id="fSit">
+              <option value="">Todas</option>
+              <option value="P">Pendiente de respuesta</option>
+              <option value="R">Respondida (por cerrar)</option>
+              <option value="NC">No cerradas (P + R)</option>
+              <option value="C">Cerrada</option>
+            </select>
+          </label>
+          <span id="chipsDetalle" class="chips"></span>
+          <button type="button" id="btnCsv" class="boton">Descargar CSV</button>
+        </div>
+        <p class="nota" id="cuentaDetalle"></p>
+        <div id="tablaDetalle" class="scroll"></div>
+        <div class="paginador" id="paginador"></div>
+      </article>
+    </section>
+
+    <!-- 6 Calidad -->
+    <section class="pagina" id="p-calidad" hidden>
+      <div class="tiles" id="tilesCalidad"></div>
+      <div class="grid g-2">
+        <article class="card">
+          <h2>Campos llenos por revisor</h2>
+          <div id="tablaCalidad"></div>
+        </article>
+        <article class="card aviso">
+          <h2>Lectura</h2>
+          <p>La <b>fecha de vencimiento</b> y la <b>criticidad</b> casi no se registran en ACC. Mientras no sean campos obligatorios en la plantilla de incidencias, las incidencias <i>vencidas</i> y los filtros por criticidad no son representativos.</p>
+          <p>El umbral de <b>15 días</b> de la página de antigüedad es provisional: el contrato fija plazos por entregable, no por incidencia.</p>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer class="pie">
+    <p>Fuente: exportación «Resumen de incidencias» de ACC/Forma (<span id="archivo"></span>). Datos de trabajo (insumo), no documento contractual. Coordinación BIM-GIS · Sinohydro.</p>
+  </footer>
+
+  <div class="tooltip" id="tt" hidden></div>
+</body>
+</html>

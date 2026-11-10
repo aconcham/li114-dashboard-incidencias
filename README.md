@@ -1,0 +1,63 @@
+# Dashboard de incidencias ACC · LI-114 Otuzco–Usquil
+
+Página web estática (GitHub Pages) para seguir las incidencias de revisión de ACC/Forma del proyecto **"Mejoramiento y ampliación del servicio de transitabilidad vial interurbana en la vía departamental LI-114: tramo Otuzco – Usquil"** (CUI 2597478).
+
+Es la versión web del modelo Power BI `Dashboard_Incidencias_ACC_LI114_R00.pbix`, con las mismas reglas y páginas:
+
+1. **Resumen**: estado, KPI I1 (meta ≥ 75 %, EIR p.25–26), situación por revisor, saldo semanal y **avance entre cortes**.
+2. **Tendencia**: creadas vs. cerradas por semana, acumulados y resumen mensual.
+3. **Antigüedad**: no cerradas por rango de días y las 25 más antiguas.
+4. **Especialidad y documento**: matriz por tipo, 15 documentos con más incidencias no cerradas y volumen vs. velocidad de cierre.
+5. **Detalle**: lista de trabajo con búsqueda, filtros y descarga en CSV. Se llega con clic desde las páginas 3 y 4.
+6. **Calidad de datos**: qué tan completos están los campos en ACC.
+
+Los filtros (Revisor, Entregable, Tipo de revisión, Fase) aplican a todas las páginas y quedan en la URL, así que un enlace copiado abre la misma vista.
+
+> ⚠️ **El sitio es público.** Cualquiera con el enlace puede ver las incidencias, incluidas sus descripciones, comentarios y autores. Los datos vienen de una exportación de trabajo de ACC, no de un documento contractual.
+
+## Actualizar con un nuevo corte
+
+1. En ACC: **Incidencias → Exportar todo → Exportar informe → Resumen de incidencias → Excel**, sin filtros y sin cubierta ni índice.
+2. Guardar el archivo **sin cambiarle el nombre** en `G:\My Drive\LI-114_OTUZCO_USQUIL\insumos\05_Incidencias_ACC\`.
+3. Desde esta carpeta, ejecutar:
+
+```bash
+python build_data.py
+git add docs/data
+git commit -m "Corte ACC AAAA-MM-DD"
+git push
+```
+
+GitHub Pages publica el cambio en uno o dos minutos. `build_data.py` toma siempre la exportación más reciente de la carpeta. Saca la **fecha de corte** del sello del nombre (que viene en UTC) y la pasa a hora de Lima. Además, agrega una fila al historial (`docs/data/historial.json`), y con eso la tabla *Avance entre cortes* va mostrando cómo avanza el equipo.
+
+Opciones: `python build_data.py --archivo ruta.xlsx` usa un archivo concreto; `--carpeta ruta` usa otra carpeta.
+
+## Ver en local
+
+```bash
+python -m http.server 8114 --directory docs
+```
+
+Luego abrir http://localhost:8114. Si se abre el `index.html` con doble clic, el navegador no carga los datos.
+
+## Estructura
+
+| Ruta | Contenido |
+|---|---|
+| `build_data.py` | Convierte la exportación de ACC en `docs/data/*.json`. Aplica las mismas reglas que la consulta Power Query |
+| `docs/index.html`, `docs/app.js`, `docs/styles.css` | La página. Usa Chart.js 4.4.1 desde cdnjs; no requiere compilación |
+| `docs/data/incidencias.json` | Una fila por incidencia y los metadatos del corte |
+| `docs/data/historial.json` | Un resumen por corte publicado |
+
+## Reglas principales
+
+- **Situación**:
+  - *Pendiente de respuesta*: Abierta, No aprobada o Borrador. Le toca actuar a Sinohydro.
+  - *Respondida (por cerrar)*: Completada. Le toca actuar al revisor.
+  - *Cerrada*.
+- **Revisor**: según la Categoría de ACC: `ANIN-…` → ANIN, `SUP-…` → Supervisión, `CTR-…` → Contratista.
+- **KPI I1** = Cerradas / total. "Resuelta" se toma como estado Cerrada; falta confirmar el criterio con ANIN.
+- **Antigüedad** = días desde la creación hasta el corte, solo para las no cerradas. El umbral de 15 días es provisional.
+- **Colores de Situación**: naranja = pendiente, azul = respondida, verde agua = cerrada. Se validaron para daltonismo en modo claro y oscuro.
+
+Coordinación BIM-GIS · Sinohydro.
