@@ -3,44 +3,92 @@
   "corte": "2026-11-09T14:03",
   "total": 2216,
   "Total": {
-   "P": 604,
-   "R": 301,
+   "P": 603,
+   "R": 302,
    "C": 1311,
-   "total": 2216
+   "total": 2216,
+   "estados": {
+    "Borrador": 1,
+    "Abierta": 585,
+    "Pendiente": 0,
+    "Completada": 301,
+    "No aprobada": 18,
+    "Cerrada": 1311
+   }
   },
   "ANIN": {
-   "P": 222,
-   "R": 191,
+   "P": 221,
+   "R": 192,
    "C": 814,
-   "total": 1227
+   "total": 1227,
+   "estados": {
+    "Borrador": 1,
+    "Abierta": 220,
+    "Pendiente": 0,
+    "Completada": 191,
+    "No aprobada": 1,
+    "Cerrada": 814
+   }
   },
   "Supervisión": {
    "P": 382,
    "R": 110,
    "C": 495,
-   "total": 987
+   "total": 987,
+   "estados": {
+    "Borrador": 0,
+    "Abierta": 365,
+    "Pendiente": 0,
+    "Completada": 110,
+    "No aprobada": 17,
+    "Cerrada": 495
+   }
   }
  },
  {
   "corte": "2026-11-10T10:25",
   "total": 2310,
   "Total": {
-   "P": 697,
-   "R": 164,
+   "P": 695,
+   "R": 166,
    "C": 1449,
-   "total": 2310
+   "total": 2310,
+   "estados": {
+    "Borrador": 2,
+    "Abierta": 677,
+    "Pendiente": 0,
+    "Completada": 164,
+    "No aprobada": 18,
+    "Cerrada": 1449
+   }
   },
   "ANIN": {
-   "P": 311,
-   "R": 67,
+   "P": 309,
+   "R": 69,
    "C": 939,
-   "total": 1317
+   "total": 1317,
+   "estados": {
+    "Borrador": 2,
+    "Abierta": 308,
+    "Pendiente": 0,
+    "Completada": 67,
+    "No aprobada": 1,
+    "Cerrada": 939
+   }
   },
   "Supervisión": {
    "P": 386,
    "R": 97,
    "C": 508,
-   "total": 991
+   "total": 991,
+   "estados": {
+    "Borrador": 0,
+    "Abierta": 369,
+    "Pendiente": 0,
+    "Completada": 97,
+    "No aprobada": 17,
+    "Cerrada": 508
+   }
   }
  }
 ]

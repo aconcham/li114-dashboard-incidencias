@@ -4,7 +4,7 @@ Página web estática (GitHub Pages) para seguir las incidencias de revisión de
 
 Es la versión web del modelo Power BI `Dashboard_Incidencias_ACC_LI114_R00.pbix`, con las mismas reglas y páginas:
 
-1. **Resumen**: estado, KPI I1 (meta ≥ 75 %, EIR p.25–26), situación por revisor, saldo semanal y **avance entre cortes**.
+1. **Resumen**: incidencias por **estado de ACC**, KPI I1 (meta ≥ 75 %, EIR p.25–26), estado por revisor, saldo semanal y **avance entre cortes**.
 2. **Tendencia**: creadas vs. cerradas por semana, acumulados y resumen mensual.
 3. **Antigüedad**: no cerradas por rango de días y las 25 más antiguas.
 4. **Especialidad y documento**: matriz por tipo, 15 documentos con más incidencias no cerradas y volumen vs. velocidad de cierre.
@@ -53,13 +53,16 @@ Luego abrir http://localhost:8114. Si se abre el `index.html` con doble clic, el
 
 ## Reglas principales
 
-- **Situación**:
-  - *Pendiente de respuesta*: Abierta, No aprobada o Borrador. Le toca actuar a Sinohydro.
-  - *Respondida (por cerrar)*: Completada. Le toca actuar al revisor.
-  - *Cerrada*.
+- **Estados**: los 6 de ACC, en el orden de Forma: Borrador, Abierta, Pendiente, Completada, No aprobada y Cerrada. Flujo del proyecto (presentación "ACC: Preguntas frecuentes"):
+  - *Abierta*: el revisor la creó; Sinohydro la pasa a Pendiente después de recibir la notificación formal de la revisión.
+  - *Pendiente*: Sinohydro la está atendiendo.
+  - *Completada*: Sinohydro la atendió; el revisor la valida cuando recibe la notificación formal de la entrega.
+  - *No aprobada*: el revisor no la da por atendida; Sinohydro vuelve a atenderla.
+  - *Cerrada*: el revisor la da por atendida.
+- **A quién le toca**: Sinohydro = Abierta, Pendiente y No aprobada; revisor = Completada y Borrador (aún no emitida). Un estado nuevo que ACC agregue aparece en gris y se cuenta como de Sinohydro; `build_data.py` avisa.
 - **Revisor**: según la Categoría de ACC: `ANIN-…` → ANIN, `SUP-…` → Supervisión, `CTR-…` → Contratista.
 - **KPI I1** = Cerradas / total. "Resuelta" se toma como estado Cerrada; falta confirmar el criterio con ANIN.
 - **Antigüedad** = días desde la creación hasta el corte, solo para las no cerradas. El umbral de 15 días es provisional.
-- **Colores de Situación**: naranja = pendiente, azul = respondida, verde agua = cerrada. Se validaron para daltonismo en modo claro y oscuro.
+- **Colores de los estados**: violeta = Borrador, amarillo = Abierta, azul = Pendiente, verde = Completada, rojo = No aprobada, verde agua = Cerrada. Siguen los tonos de Forma donde se pudo y se validaron para daltonismo en modo claro y oscuro; Cerrada no es gris como en Forma porque el gris no pasa la validación.
 
 Coordinación BIM-GIS · Sinohydro.

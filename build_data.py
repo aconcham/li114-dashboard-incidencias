@@ -2,7 +2,7 @@
 
 Replica las reglas de la consulta Power Query del modelo Power BI
 (plantillas/02_Formatos_Propios/Dashboard_Incidencias_ACC_LI114_R00.pbix):
-estado en español, situación, revisor, segmentos del código del documento, etc.
+estado en español, a quién le toca, revisor, segmentos del código del documento, etc.
 
 Uso:
     python build_data.py                      # toma la exportación más reciente de la carpeta por defecto
@@ -30,8 +30,16 @@ CARPETA = Path(r"G:\My Drive\LI-114_OTUZCO_USQUIL\insumos\05_Incidencias_ACC")
 RAIZ = Path(__file__).resolve().parent
 DATOS = RAIZ / "docs" / "data"
 
-ESTADOS = {"Open": "Abierta", "Completed": "Completada", "Closed": "Cerrada",
-           "Not approved": "No aprobada", "Draft": "Borrador"}
+# Estados de ACC, en el orden en que los muestra Forma.
+ESTADOS = {"Draft": "Borrador", "Open": "Abierta", "Pending": "Pendiente", "Completed": "Completada",
+           "Not approved": "No aprobada", "Closed": "Cerrada"}
+ORDEN_ESTADOS = list(ESTADOS.values())
+
+# A quién le toca actuar, según el flujo de estados del proyecto ("ACC: Preguntas frecuentes"):
+#   P = Sinohydro: Abierta (actúa tras la notificación formal), Pendiente (la está atendiendo), No aprobada (debe volver a atenderla)
+#   R = revisor (ANIN / Supervisión): Completada (por validar), Borrador (aún no emitida)
+#   C = Cerrada
+TOCA = {"Abierta": "P", "Pendiente": "P", "No aprobada": "P", "Completada": "R", "Borrador": "R", "Cerrada": "C"}
 
 
 def ultima_exportacion(carpeta: Path) -> Path:
@@ -147,7 +155,7 @@ def main():
     filas = []
     for _, r in df.iterrows():
         estado = ESTADOS.get(txt(r.get("Status")), txt(r.get("Status")))
-        situacion = "C" if estado == "Cerrada" else ("R" if estado == "Completada" else "P")
+        situacion = TOCA.get(estado, "P")  # un estado desconocido se cuenta como de Sinohydro
         tipo = txt(r.get("Type"))
         archivo = txt(r.get("Placement"))
         doc = archivo.rsplit(".", 1)[0] if archivo and "." in archivo else archivo
@@ -198,13 +206,18 @@ def main():
     for rv in ["Total", "ANIN", "Supervisión"]:
         sub = [f for f in filas if rv == "Total" or f["rev"] == rv]
         resumen[rv] = {k: sum(1 for f in sub if f["sit"] == k) for k in "PRC"} | {"total": len(sub)}
+        resumen[rv]["estados"] = {e: n for e in ORDEN_ESTADOS + sorted({f["estado"] for f in sub} - set(ORDEN_ESTADOS))
+                                  if (n := sum(1 for f in sub if f["estado"] == e)) or e in ORDEN_ESTADOS}
     hist = [h for h in hist if h["corte"] != resumen["corte"]] + [resumen]
     hist.sort(key=lambda h: h["corte"])
     hist_path.write_text(json.dumps(hist, ensure_ascii=False, indent=1), encoding="utf-8")
 
     t = resumen["Total"]
-    print(f"{origen.name} → corte {meta['corte']} · {len(filas)} incidencias "
-          f"(P {t['P']} · R {t['R']} · C {t['C']}) · historial: {len(hist)} cortes")
+    est = " · ".join(f"{e} {n}" for e, n in t["estados"].items())
+    print(f"{origen.name} → corte {meta['corte']} · {len(filas)} incidencias ({est}) · historial: {len(hist)} cortes")
+    desconocidos = set(t["estados"]) - set(ORDEN_ESTADOS)
+    if desconocidos:
+        print(f"AVISO: estados no reconocidos {sorted(desconocidos)}; se cuentan como de Sinohydro. Revisar TOCA en build_data.py.")
 
 
 if __name__ == "__main__":

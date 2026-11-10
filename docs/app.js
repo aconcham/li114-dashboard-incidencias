@@ -5,7 +5,13 @@
 const DIA = 86400000;
 const META_I1 = 0.75;
 const UMBRAL_PEND = 15; // días, provisional (pendiente #63 de la wiki)
-const SIT = { P: "Pendiente de respuesta", R: "Respondida (por cerrar)", C: "Cerrada" };
+const SIT = { P: "Le toca a Sinohydro", R: "Le toca al revisor", C: "Cerrada" };
+// Estados de ACC en el orden de Forma. Flujo del proyecto ("ACC: Preguntas frecuentes"):
+// Abierta → (notificación formal) → Pendiente → Completada → ¿se valida? → Cerrada | No aprobada → Pendiente…
+let ESTADOS = ["Borrador", "Abierta", "Pendiente", "Completada", "No aprobada", "Cerrada"];
+const CORTO = { Borrador: "Borr.", Abierta: "Abier.", Pendiente: "Pend.", Completada: "Compl.", "No aprobada": "No apr.", Cerrada: "Cerr." };
+const TOCA_TXT = { P: "le toca a Sinohydro", R: "le toca al revisor", C: null };
+const TOCA_EST = { Borrador: "R", Abierta: "P", Pendiente: "P", Completada: "R", "No aprobada": "P", Cerrada: "C" };
 const RANGOS = [["0-7 d", 0, 7], ["8-15 d", 7, 15], ["16-30 d", 15, 30], ["31-60 d", 30, 60], ["> 60 d", 60, Infinity]];
 
 let DATA = [], META = {}, HIST = [], CORTE = null;
@@ -39,7 +45,9 @@ function el(tag, attrs = {}, ...hijos) {
 }
 const llenar = (id, ...hijos) => { const c = $(id); c.replaceChildren(...hijos.flat()); return c; };
 const key = (color) => el("span", { class: "key", style: `background:${color}` });
-const colSit = (s) => css({ P: "--sit-p", R: "--sit-r", C: "--sit-c" }[s]);
+const colEst = (e) => { const i = ["Borrador", "Abierta", "Pendiente", "Completada", "No aprobada", "Cerrada"].indexOf(e); return i < 0 ? css("--ink-3") : css(`--est-${i}`); };
+const estadosAbiertos = () => ESTADOS.filter((e) => e !== "Cerrada");
+const chipEstado = (r) => el("span", { class: "sit" }, key(colEst(r.estado)), r.estado);
 
 /* ---------- enlaces a ACC (requieren sesión en ACC con acceso al proyecto) ---------- */
 const enc = encodeURIComponent;
@@ -79,7 +87,8 @@ const filtrados = () => DATA.filter((r) =>
 
 function contar(rows) {
   const c = { total: rows.length, P: 0, R: 0, C: 0 };
-  for (const r of rows) c[r.sit]++;
+  c.est = Object.fromEntries(ESTADOS.map((e) => [e, 0]));
+  for (const r of rows) { c[r.sit]++; c.est[r.estado] = (c.est[r.estado] || 0) + 1; }
   c.NC = c.P + c.R;
   c.i1 = c.total ? c.C / c.total : null;
   c.faltan = Math.max(0, Math.ceil(META_I1 * c.total - c.C));
@@ -189,12 +198,10 @@ function renderResumen(rows) {
   const cre7 = rows.filter((r) => r.dCre && r.dCre > hace7).length, cer7 = rows.filter((r) => r.dCer && r.dCer > hace7).length;
   const v7 = cre7 - cer7;
   llenar("tilesResumen",
-    tile("Incidencias", fmt(c.total)),
-    tile(SIT.P, fmt(c.P), "acción: Sinohydro", colSit("P")),
-    tile(SIT.R, fmt(c.R), "acción: el revisor", colSit("R")),
-    tile("Cerradas", fmt(c.C), null, colSit("C")),
+    tile("Incidencias", fmt(c.total), `${fmt(c.P)} le tocan a Sinohydro · ${fmt(c.R)} al revisor`),
     tile("Cierres que faltan para el 75 %", fmt(c.faltan)),
     tile("Variación del saldo (7 días)", (v7 > 0 ? "+" : "") + fmt(v7), `${fmt(cre7)} creadas · ${fmt(cer7)} cerradas`));
+  llenar("tilesEstados", ESTADOS.map((e) => tile(e, fmt(c.est[e]), TOCA_TXT[TOCA_EST[e] || "P"], colEst(e))));
 
   const ok = c.i1 >= META_I1;
   const porRev = ["ANIN", "Supervisión"].map((rv) => [rv, contar(rows.filter((r) => r.rev === rv))]).filter(([, x]) => x.total);
@@ -208,13 +215,13 @@ function renderResumen(rows) {
   const cuentas = revs.map((rv) => contar(rows.filter((r) => r.rev === rv)));
   grafico("chSituacion", {
     type: "bar",
-    data: { labels: revs, datasets: ["P", "R", "C"].map((s) => barDs(SIT[s], cuentas.map((x) => (x.total ? (100 * x[s]) / x.total : 0)), colSit(s), { borderRadius: 0, borderWidth: 2 })) },
+    data: { labels: revs, datasets: ESTADOS.map((e) => barDs(e, cuentas.map((x) => (x.total ? (100 * x.est[e]) / x.total : 0)), colEst(e), { borderRadius: 0, borderWidth: 2 })) },
     options: baseOpts({
       indexAxis: "y", interaction: { mode: "nearest", intersect: true },
       scales: { x: { stacked: true, max: 100, grid: { color: css("--grid") }, ticks: { color: css("--ink-2"), callback: (v) => v + " %" } }, y: { stacked: true, grid: { display: false }, ticks: { color: css("--ink-2") } } },
       plugins: Object.assign(baseOpts().plugins, {
-        tooltip: Object.assign(baseOpts().plugins.tooltip, { callbacks: { label: (it) => ` ${fmt(cuentas[it.dataIndex][["P", "R", "C"][it.datasetIndex]])} · ${fmt1(it.raw)} % — ${it.dataset.label}` } }),
-        etiquetas: { mostrar: true, valor: (i, j) => cuentas[j][["P", "R", "C"][i]] },
+        tooltip: Object.assign(baseOpts().plugins.tooltip, { callbacks: { label: (it) => ` ${fmt(cuentas[it.dataIndex].est[ESTADOS[it.datasetIndex]])} · ${fmt1(it.raw)} % — ${it.dataset.label}` } }),
+        etiquetas: { mostrar: true, valor: (i, j) => cuentas[j].est[ESTADOS[i]] },
       }),
     }),
     plugins: [etiquetas],
@@ -230,12 +237,12 @@ function renderResumen(rows) {
   renderHistorial();
 }
 function renderHistorial() {
-  const cab = ["Corte", "Total", SIT.P, SIT.R, "Cerradas", "I1 total", "I1 ANIN", "I1 Supervisión", "Δ cerradas"];
+  const cab = ["Corte", "Total", ...ESTADOS, "I1 total", "I1 ANIN", "I1 Supervisión", "Δ cerradas"];
   const filas = HIST.map((h, i) => {
     const prev = HIST[i - 1];
     const i1 = (x) => (x && x.total ? x.C / x.total : null);
-    return el("tr", {}, el("td", {}, fechaHora(new Date(h.corte))), el("td", { class: "num" }, fmt(h.Total.total)), el("td", { class: "num" }, fmt(h.Total.P)),
-      el("td", { class: "num" }, fmt(h.Total.R)), el("td", { class: "num" }, fmt(h.Total.C)), el("td", { class: "num" }, pct(i1(h.Total))),
+    return el("tr", {}, el("td", {}, fechaHora(new Date(h.corte))), el("td", { class: "num" }, fmt(h.Total.total)),
+      ESTADOS.map((e) => el("td", { class: "num" }, h.Total.estados ? fmt(h.Total.estados[e] || 0) : "–")), el("td", { class: "num" }, pct(i1(h.Total))),
       el("td", { class: "num" }, pct(i1(h.ANIN))), el("td", { class: "num" }, pct(i1(h["Supervisión"]))),
       el("td", { class: "num" }, prev ? (h.Total.C - prev.Total.C >= 0 ? "+" : "") + fmt(h.Total.C - prev.Total.C) : "–"));
   });
@@ -248,12 +255,12 @@ function renderTendencia(rows) {
   const sem = semanas(rows), labels = sem.map((s) => etiquetaSemana(s.w));
   grafico("chSemanal", {
     type: "bar",
-    data: { labels, datasets: [barDs("Creadas", sem.map((s) => s.cre), colSit("P")), barDs("Cerradas", sem.map((s) => s.cer), colSit("C"))] },
+    data: { labels, datasets: [barDs("Creadas", sem.map((s) => s.cre), colEst("Abierta")), barDs("Cerradas", sem.map((s) => s.cer), colEst("Cerrada"))] },
     options: baseOpts(),
   });
   grafico("chAcum", {
     type: "line",
-    data: { labels, datasets: [lineDs("Creadas acumuladas", sem.map((s) => s.creAc), colSit("P")), lineDs("Cerradas acumuladas", sem.map((s) => s.cerAc), colSit("C"))] },
+    data: { labels, datasets: [lineDs("Creadas acumuladas", sem.map((s) => s.creAc), colEst("Abierta")), lineDs("Cerradas acumuladas", sem.map((s) => s.cerAc), colEst("Cerrada"))] },
     options: baseOpts(),
   });
   const meses = new Map();
@@ -281,12 +288,12 @@ function renderAntiguedad(rows) {
   llenar("tilesAntig",
     tile("Antigüedad promedio de las no cerradas", fmt1(promedio(nc.map((r) => r.edad))) + " d"),
     tile("Días hasta el cierre (mediana)", fmt1(mediana(rows.filter((r) => r.diasCierre != null).map((r) => r.diasCierre))) + " d"),
-    tile(`Pendientes de respuesta > ${UMBRAL_PEND} días`, fmt(nc.filter((r) => r.sit === "P" && r.edad > UMBRAL_PEND).length), "umbral provisional", colSit("P")),
+    tile(`Le toca a Sinohydro > ${UMBRAL_PEND} días`, fmt(nc.filter((r) => r.sit === "P" && r.edad > UMBRAL_PEND).length), "Abierta, Pendiente o No aprobada · umbral provisional"),
     tile("No cerradas > 30 días", fmt(nc.filter((r) => r.edad > 30).length)));
-  const porRango = (s) => RANGOS.map(([lab]) => nc.filter((r) => r.rango === lab && r.sit === s).length);
+  const porRango = (e) => RANGOS.map(([lab]) => nc.filter((r) => r.rango === lab && r.estado === e).length);
   grafico("chRangos", {
     type: "bar",
-    data: { labels: RANGOS.map((x) => x[0]), datasets: ["P", "R"].map((s) => barDs(SIT[s], porRango(s), colSit(s), { borderWidth: 2, borderRadius: 0 })) },
+    data: { labels: RANGOS.map((x) => x[0]), datasets: estadosAbiertos().map((e) => barDs(e, porRango(e), colEst(e), { borderWidth: 2, borderRadius: 0 })) },
     options: baseOpts({ scales: { x: { stacked: true, grid: { display: false }, ticks: { color: css("--ink-2") } }, y: { stacked: true, beginAtZero: true, grid: { color: css("--grid") }, ticks: { color: css("--ink-2"), precision: 0 } } },
       plugins: Object.assign(baseOpts().plugins, { etiquetas: { mostrar: true } }) }),
     plugins: [etiquetas],
@@ -296,7 +303,7 @@ function renderAntiguedad(rows) {
   llenar("tablaAntiguas", el("table", {},
     el("thead", {}, el("tr", {}, ["ID", "Título", "Revisor", "Estado", "Documento", "Creado por", "Creado el", "Antigüedad (d)"].map((t, i) => el("th", { class: i === 7 ? "num" : null }, t)))),
     el("tbody", {}, top.map((r) => el("tr", { class: "clic", tabindex: "0", title: "Ver documento en Detalle", onclick: () => irDetalle({ doc: r.docCorto || r.doc }), onkeydown: (e) => e.key === "Enter" && irDetalle({ doc: r.docCorto || r.doc }) },
-      el("td", {}, enlaceAcc(urlIncidencia(r), r.id, "Abrir la incidencia en ACC")), el("td", {}, r.titulo), el("td", {}, r.rev), el("td", {}, el("span", { class: "sit" }, key(colSit(r.sit)), r.estado)),
+      el("td", {}, enlaceAcc(urlIncidencia(r), r.id, "Abrir la incidencia en ACC")), el("td", {}, r.titulo), el("td", {}, r.rev), el("td", {}, chipEstado(r)),
       el("td", {}, enlaceAcc(urlDocumento(r), r.docCorto || r.doc || "–", "Abrir el documento en ACC con la marca de la incidencia")), el("td", {}, r.creador || "–"), el("td", {}, fecha(r.dCre)),
       el("td", { class: "num" }, el("div", { class: "barra-celda" }, el("i", { style: `width:${Math.max(2, (90 * r.edad) / maxE)}px` }), fmt1(r.edad))))))));
 }
@@ -307,21 +314,21 @@ function renderEspecialidad(rows) {
   for (const r of rows) { const k = r.tsr || "(sin tipo)"; (grupos.get(k) || grupos.set(k, []).get(k)).push(r); }
   const esp = [...grupos.entries()].map(([k, rs]) => ({ k, c: contar(rs), med: mediana(rs.filter((r) => r.diasCierre != null).map((r) => r.diasCierre)) }))
     .sort((a, b) => b.c.total - a.c.total);
-  const maxCelda = Math.max(1, ...esp.flatMap((e) => [e.c.P, e.c.R, e.c.C]));
+  const maxCelda = Math.max(1, ...esp.flatMap((e) => ESTADOS.map((x) => e.c.est[x])));
   const seq = (v) => { if (!v) return "transparent"; const i = Math.min(4, Math.floor((4 * v) / maxCelda + 0.5)); return css(`--seq-${i}`); };
   const tinta = (v) => (v && Math.floor((4 * v) / maxCelda + 0.5) >= 3 ? "#ffffff" : css("--ink"));
   llenar("matrizEsp", el("table", {},
-    el("thead", {}, el("tr", {}, el("th", {}, "Tipo"), ["P", "R", "C"].map((s) => el("th", { class: "num", title: SIT[s] }, el("span", { class: "sit" }, key(colSit(s)), { P: "Pend.", R: "Resp.", C: "Cerr." }[s]))), el("th", { class: "num" }, "Total"), el("th", { class: "num", title: "Mediana de días hasta el cierre" }, "Med. (d)"))),
+    el("thead", {}, el("tr", {}, el("th", {}, "Tipo"), ESTADOS.map((x) => el("th", { class: "num", title: x }, el("span", { class: "sit" }, key(colEst(x)), CORTO[x] || x))), el("th", { class: "num" }, "Total"), el("th", { class: "num", title: "Mediana de días hasta el cierre" }, "Med. (d)"))),
     el("tbody", {}, esp.map((e) => el("tr", { class: "clic", tabindex: "0", onclick: () => irDetalle({ tsr: e.k, sit: "" }), onkeydown: (ev) => ev.key === "Enter" && irDetalle({ tsr: e.k, sit: "" }) },
-      el("td", { style: "white-space:nowrap" }, e.k), ["P", "R", "C"].map((s) => el("td", { class: "heat", style: `background:${seq(e.c[s])};color:${tinta(e.c[s])}` }, e.c[s] ? fmt(e.c[s]) : "")),
+      el("td", { style: "white-space:nowrap" }, e.k), ESTADOS.map((x) => el("td", { class: "heat", style: `background:${seq(e.c.est[x])};color:${tinta(e.c.est[x])}` }, e.c.est[x] ? fmt(e.c.est[x]) : "")),
       el("td", { class: "num" }, fmt(e.c.total)), el("td", { class: "num" }, fmt1(e.med)))))));
 
   const docs = new Map();
-  for (const r of rows) if (r.sit !== "C") { const k = r.docCorto || r.doc || "(sin documento)"; const d = docs.get(k) || docs.set(k, { P: 0, R: 0, doc: r.doc }).get(k); d[r.sit]++; }
-  const top = [...docs.entries()].map(([k, v]) => ({ k, ...v, nc: v.P + v.R })).sort((a, b) => b.nc - a.nc).slice(0, 15);
+  for (const r of rows) if (r.sit !== "C") { const k = r.docCorto || r.doc || "(sin documento)"; const d = docs.get(k) || docs.set(k, { est: {}, nc: 0, doc: r.doc }).get(k); d.est[r.estado] = (d.est[r.estado] || 0) + 1; d.nc++; }
+  const top = [...docs.entries()].map(([k, v]) => ({ k, ...v })).sort((a, b) => b.nc - a.nc).slice(0, 15);
   grafico("chDocs", {
     type: "bar",
-    data: { labels: top.map((d) => d.k), datasets: ["P", "R"].map((s) => barDs(SIT[s], top.map((d) => d[s]), colSit(s), { borderWidth: 2, borderRadius: 0 })) },
+    data: { labels: top.map((d) => d.k), datasets: estadosAbiertos().map((e) => barDs(e, top.map((d) => d.est[e] || 0), colEst(e), { borderWidth: 2, borderRadius: 0 })) },
     options: baseOpts({
       indexAxis: "y", interaction: { mode: "index", intersect: false, axis: "y" },
       scales: { x: { stacked: true, beginAtZero: true, grid: { color: css("--grid") }, ticks: { color: css("--ink-2"), precision: 0 } }, y: { stacked: true, grid: { display: false }, ticks: { color: css("--ink-2"), autoSkip: false, font: { size: 11 } } } },
@@ -355,7 +362,7 @@ function filasDetalle(rows) {
   const q = state.q.trim().toLowerCase();
   return rows.filter((r) =>
     (!state.doc || r.docCorto === state.doc || r.doc === state.doc) && (!state.tsr || (r.tsr || "(sin tipo)") === state.tsr) &&
-    (!state.sit || (state.sit === "NC" ? r.sit !== "C" : r.sit === state.sit)) && (!q || r.texto.includes(q)))
+    (!state.sit || (state.sit === "NC" ? r.sit !== "C" : ["P", "R", "C"].includes(state.sit) ? r.sit === state.sit : r.estado === state.sit)) && (!q || r.texto.includes(q)))
     .sort((a, b) => (b.edad ?? -1) - (a.edad ?? -1) || b.n - a.n);
 }
 function renderDetalle(rows) {
@@ -375,7 +382,7 @@ function renderDetalle(rows) {
   llenar("tablaDetalle", el("table", {},
     el("thead", {}, el("tr", {}, ["ID", "Título", "Descripción", "Estado", "Revisor", "Documento", "Creado por", "Creado el", "Antig. (d)", "Comentarios"].map((t, i) => el("th", { class: i === 8 ? "num" : null }, t)))),
     el("tbody", {}, vista.map((r) => el("tr", {},
-      el("td", {}, enlaceAcc(urlIncidencia(r), r.id, "Abrir la incidencia en ACC")), el("td", {}, r.titulo), el("td", { class: "desc" }, r.desc || "–"), el("td", {}, el("span", { class: "sit" }, key(colSit(r.sit)), r.estado)),
+      el("td", {}, enlaceAcc(urlIncidencia(r), r.id, "Abrir la incidencia en ACC")), el("td", {}, r.titulo), el("td", { class: "desc" }, r.desc || "–"), el("td", {}, chipEstado(r)),
       el("td", {}, r.rev), el("td", {}, enlaceAcc(urlDocumento(r), r.docCorto || r.doc || "–", (r.doc || "") + " · abrir en ACC con la marca de la incidencia")), el("td", {}, r.creador || "–"), el("td", {}, fecha(r.dCre)),
       el("td", { class: "num" }, r.edad == null ? "–" : fmt1(r.edad)), el("td", { class: "coment" }, r.coment || ""))))));
   llenar("paginador",
@@ -385,7 +392,7 @@ function renderDetalle(rows) {
 }
 function descargarCsv() {
   const fs = filasDetalle(filtrados());
-  const cols = [["ID", "id"], ["Título", "titulo"], ["Estado", "estado"], ["Situación", (r) => SIT[r.sit]], ["Revisor", "rev"], ["Tipo", "tipo"], ["Documento", "doc"],
+  const cols = [["ID", "id"], ["Título", "titulo"], ["Estado", "estado"], ["Le toca a", (r) => ({ P: "Sinohydro", R: "Revisor", C: "–" })[r.sit]], ["Revisor", "rev"], ["Tipo", "tipo"], ["Documento", "doc"],
     ["Entregable", "entregable"], ["Tipo de revisión", "tipoRev"], ["Creado por", "creador"], ["Creado el", "creado"], ["Cerrado el", "cerrado"],
     ["Antigüedad (d)", (r) => (r.edad == null ? "" : r.edad.toFixed(1))], ["Causa raíz", "causa"], ["Criticidad", "crit"], ["Descripción", "desc"], ["Comentarios", "coment"],
     ["Enlace incidencia ACC", (r) => urlIncidencia(r)], ["Enlace documento ACC", (r) => urlDocumento(r)]];
@@ -427,6 +434,8 @@ async function iniciar() {
     const [d, h] = await Promise.all([fetch("data/incidencias.json", { cache: "no-cache" }).then((r) => r.json()), fetch("data/historial.json", { cache: "no-cache" }).then((r) => (r.ok ? r.json() : [])).catch(() => [])]);
     META = d.meta; HIST = h; CORTE = new Date(META.corte);
     DATA = preparar(d.incidencias);
+    const extra = [...new Set(DATA.map((r) => r.estado))].filter((e) => e && !ESTADOS.includes(e)).sort();
+    ESTADOS = [...ESTADOS.slice(0, -1), ...extra, "Cerrada"]; // un estado nuevo de ACC aparece igual, en gris
   } catch (e) {
     $("corte").textContent = "No se pudieron cargar los datos (data/incidencias.json). Si abriste el archivo localmente, usa un servidor: python -m http.server";
     return;
@@ -434,6 +443,9 @@ async function iniciar() {
   $("corte").textContent = `Corte ACC: ${fechaHora(CORTE)} (hora Lima) · ${fmt(META.filas)} incidencias`;
   $("archivo").textContent = META.archivo;
   Chart.defaults.font.family = "Segoe UI, system-ui, -apple-system, Roboto, sans-serif";
+  llenar("fSit", el("option", { value: "" }, "Todos"), el("option", { value: "NC" }, "No cerradas"),
+    el("optgroup", { label: "A quién le toca" }, el("option", { value: "P" }, "Sinohydro (Abierta, Pendiente, No aprobada)"), el("option", { value: "R" }, "Revisor (Borrador, Completada)")),
+    el("optgroup", { label: "Estado en ACC" }, ESTADOS.map((e) => el("option", { value: e }, e))));
   opciones("fRev", "rev", "Todos"); opciones("fEnt", "entregable", "Todos"); opciones("fTrv", "tipoRev", "Todos"); opciones("fFase", "fase", "Todas");
   for (const [id, k] of [["fRev", "rev"], ["fEnt", "ent"], ["fTrv", "trv"], ["fFase", "fase"]]) $(id).addEventListener("change", (e) => { state[k] = e.target.value; state.page = 0; render(); });
   $("btnLimpiar").addEventListener("click", () => { Object.assign(state, { rev: "", ent: "", trv: "", fase: "", q: "", sit: "", doc: "", tsr: "", page: 0 }); render(); });

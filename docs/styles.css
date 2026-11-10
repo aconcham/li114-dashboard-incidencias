@@ -8,10 +8,14 @@
   --line: #e3e3df;
   --grid: #ececE8;
   --accent: #2a78d6;
-  /* Situación (validado: dataviz validate_palette, modo claro) */
-  --sit-p: #eb6834;
-  --sit-r: #2a78d6;
-  --sit-c: #1baf7a;
+  /* Estados ACC, orden de Forma: Borrador, Abierta, Pendiente, Completada, No aprobada, Cerrada
+     (validado con dataviz validate_palette; CVD 6,9 en No aprobada↔Cerrada → se apoya en etiquetas, separación y leyenda) */
+  --est-0: #6250d6;
+  --est-1: #eda100;
+  --est-2: #2a78d6;
+  --est-3: #008300;
+  --est-4: #e34948;
+  --est-5: #1baf7a;
   /* secuencial (un solo tono, claro→oscuro) */
   --seq-0: #eef4fc;
   --seq-1: #c9dcf5;
@@ -33,9 +37,12 @@
   --line: #2f2f2d;
   --grid: #2a2a28;
   --accent: #3987e5;
-  --sit-p: #d95926;
-  --sit-r: #3987e5;
-  --sit-c: #199e70;
+  --est-0: #9085e9;
+  --est-1: #c98500;
+  --est-2: #3987e5;
+  --est-3: #008300;
+  --est-4: #e66767;
+  --est-5: #199e70;
   --seq-0: #1d2632;
   --seq-1: #1f3a5c;
   --seq-2: #275486;
@@ -54,9 +61,12 @@
     --line: #2f2f2d;
     --grid: #2a2a28;
     --accent: #3987e5;
-    --sit-p: #d95926;
-    --sit-r: #3987e5;
-    --sit-c: #199e70;
+    --est-0: #9085e9;
+    --est-1: #c98500;
+    --est-2: #3987e5;
+    --est-3: #008300;
+    --est-4: #e66767;
+    --est-5: #199e70;
     --seq-0: #1d2632;
     --seq-1: #1f3a5c;
     --seq-2: #275486;
@@ -125,6 +135,7 @@ main { max-width: 1440px; margin: 0 auto; padding: 16px 24px 8px; }
 .chart.h-lg { height: 460px; }
 
 .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+.tiles.estados { grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); }
 .tile { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
 .tile .lab { color: var(--ink-2); font-size: 12px; display: flex; align-items: center; gap: 6px; }
 .tile .val { font-size: 28px; font-weight: 600; margin-top: 2px; }
@@ -153,7 +164,7 @@ tbody tr.clic:hover { background: color-mix(in srgb, var(--accent) 8%, transpare
 .coment { max-width: 300px; white-space: pre-wrap; color: var(--ink-2); font-size: 12px; }
 .sit { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .barra-celda { display: flex; align-items: center; gap: 6px; justify-content: flex-end; }
-.barra-celda i { display: block; height: 10px; border-radius: 0 4px 4px 0; background: var(--sit-p); }
+.barra-celda i { display: block; height: 10px; border-radius: 0 4px 4px 0; background: var(--ink-3); }
 .heat { text-align: right; font-weight: 600; }
 
 .barra-detalle { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: end; margin-bottom: 8px; }
