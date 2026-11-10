@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Incidencias ACC · LI-114</title>
   <meta name="description" content="Seguimiento de incidencias de revisión en ACC/Forma — LI-114 Otuzco–Usquil (CUI 2597478).">
-  <link rel="stylesheet" href="styles.css?v=9">
+  <link rel="stylesheet" href="styles.css?v=10">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" defer></script>
-  <script src="app.js?v=7" defer></script>
+  <script src="app.js?v=9" defer></script>
 </head>
 <body>
   <header class="top">
@@ -47,8 +47,8 @@
           <div id="kpiI1"></div>
         </article>
         <article class="card">
-          <h2>Estado por revisor</h2>
-          <p class="nota">Le toca a Sinohydro: <b>Abierta</b>, <b>Pendiente</b> y <b>No aprobada</b>. Le toca al revisor: <b>Completada</b> y <b>Borrador</b>.</p>
+          <h2>Estado de las observaciones, por quién las emitió</h2>
+          <p class="nota">Cada fila agrupa las observaciones por su <b>Categoría</b> en ACC, es decir, por quién las emitió. El color es el <b>estado</b>, y el estado dice a quién le toca actuar. Primero van los estados de Sinohydro (<b>Abierta</b>, <b>Pendiente</b>, <b>No aprobada</b>), luego los del revisor (<b>Completada</b>, <b>Borrador</b>) y al final las <b>Cerradas</b>. Bajo cada nombre: cuántas le tocan a cada parte.</p>
           <div class="chart h-sm"><canvas id="chSituacion"></canvas></div>
         </article>
       </div>
@@ -146,10 +146,16 @@
         </article>
         <article class="card aviso">
           <h2>Lectura</h2>
+          <p>La <b>Categoría</b> de ACC define en qué fila del revisor cae cada incidencia. Las que no corresponden a la empresa de quien las creó están abajo: revisar si la Categoría está mal o si una parte registró observaciones de otra.</p>
           <p>La <b>fecha de vencimiento</b> y la <b>criticidad</b> casi no se registran en ACC. Mientras no sean campos obligatorios en la plantilla de incidencias, las incidencias <i>vencidas</i> y los filtros por criticidad no son representativos.</p>
           <p>El umbral de <b>15 días</b> de la página de antigüedad es provisional: el contrato fija plazos por entregable, no por incidencia.</p>
         </article>
       </div>
+      <article class="card">
+        <h2>Categoría que no coincide con quien creó la incidencia</h2>
+        <p class="nota">Ejemplo: Categoría <b>ANIN-REVISION</b> en una incidencia creada por la Supervisión. El dashboard la cuenta en la fila de ANIN. Puede estar bien si la Supervisión registró en ACC una observación de ANIN; si no, se corrige la Categoría en ACC (clic en el ID ↗). La empresa es la que ACC tiene registrada para el usuario.</p>
+        <div id="tablaCategoria" class="scroll"></div>
+      </article>
     </section>
   </main>
 

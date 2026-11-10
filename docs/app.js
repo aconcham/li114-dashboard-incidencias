@@ -250,15 +250,22 @@ function renderResumen(rows) {
 
   const revs = ["ANIN", "Supervisión", "Contratista"].filter((rv) => rows.some((r) => r.rev === rv));
   const cuentas = revs.map((rv) => contar(rows.filter((r) => r.rev === rv)));
+  const toca = (e) => TOCA_EST[e] || "P";
+  const orden = ["P", "R", "C"].flatMap((g) => ESTADOS.filter((e) => toca(e) === g)); // primero lo de Sinohydro, luego lo del revisor
+  const quien = { P: "le toca a Sinohydro", R: "le toca al revisor", C: "cerrada" };
   grafico("chSituacion", {
     type: "bar",
-    data: { labels: revs, datasets: ESTADOS.map((e) => barDs(e, cuentas.map((x) => (x.total ? (100 * x.est[e]) / x.total : 0)), colEst(e), { borderRadius: 0, borderWidth: 2 })) },
+    data: {
+      labels: revs.map((rv, i) => [`${rv} (${fmt(cuentas[i].total)})`, `Sinohydro ${fmt(cuentas[i].P)} · revisor ${fmt(cuentas[i].R)}`]),
+      datasets: orden.map((e) => barDs(e, cuentas.map((x) => (x.total ? (100 * x.est[e]) / x.total : 0)), colEst(e), { borderRadius: 0, borderWidth: 2 })),
+    },
     options: baseOpts({
       indexAxis: "y", interaction: { mode: "nearest", intersect: true },
       scales: { x: { stacked: true, max: 100, grid: { color: css("--grid") }, ticks: { color: css("--ink-2"), callback: (v) => v + " %" } }, y: { stacked: true, grid: { display: false }, ticks: { color: css("--ink-2") } } },
       plugins: Object.assign(baseOpts().plugins, {
-        tooltip: Object.assign(baseOpts().plugins.tooltip, { callbacks: { label: (it) => ` ${fmt(cuentas[it.dataIndex].est[ESTADOS[it.datasetIndex]])} · ${fmt1(it.raw)} % — ${it.dataset.label}` } }),
-        etiquetas: { mostrar: true, valor: (i, j) => cuentas[j].est[ESTADOS[i]] },
+        tooltip: Object.assign(baseOpts().plugins.tooltip, { callbacks: { title: (it) => `Emitidas por ${revs[it[0].dataIndex]}`,
+          label: (it) => ` ${fmt(cuentas[it.dataIndex].est[orden[it.datasetIndex]])} · ${fmt1(it.raw)} % — ${it.dataset.label} (${quien[toca(orden[it.datasetIndex])]})` } }),
+        etiquetas: { mostrar: true, valor: (i, j) => cuentas[j].est[orden[i]] },
       }),
     }),
     plugins: [etiquetas],
@@ -444,11 +451,28 @@ function descargarCsv() {
 }
 
 /* ---------- 6 Calidad ---------- */
+// ¿La Categoría (quién emitió) coincide con la empresa de quien creó la incidencia? null = no se puede verificar
+const EMPRESA_REV = { ANIN: (e) => e === "ANIN", "Supervisión": (e) => /^SC? - /.test(e), Contratista: (e) => /^C - /.test(e) };
+function categoriaCoincide(r) {
+  const e = r.empCreador;
+  if (!e || e === "Usuario retirado" || !EMPRESA_REV[r.rev]) return null;
+  return EMPRESA_REV[r.rev](e);
+}
 function renderCalidad(rows) {
   const campos = [["Fecha de vencimiento", (r) => r.venc], ["Criticidad", (r) => r.crit], ["Causa raíz", (r) => r.causa], ["Entregable", (r) => r.entregable]];
   const p = (rs, f) => (rs.length ? rs.filter(f).length / rs.length : null);
+  const verif = rows.filter((r) => categoriaCoincide(r) != null), distintas = verif.filter((r) => !categoriaCoincide(r));
   llenar("tilesCalidad", campos.map(([l, f]) => { const v = p(rows, f); return tile(`% con ${l.toLowerCase()}`, pct(v), v < 0.5 ? "✕ insuficiente" : "✓ aceptable", null,
-    `Porcentaje de incidencias que tienen el campo «${l}» lleno en ACC. Menos de 50 % se marca como insuficiente: las medidas que dependen de ese campo no son representativas.`); }));
+    `Porcentaje de incidencias que tienen el campo «${l}» lleno en ACC. Menos de 50 % se marca como insuficiente: las medidas que dependen de ese campo no son representativas.`); }),
+    tile("Categoría distinta de quien la creó", fmt(distintas.length), `${pct(verif.length ? distintas.length / verif.length : null)} de las verificables · ${fmt(rows.length - verif.length)} sin verificar (usuario retirado)`, null,
+      "Incidencias cuya Categoría de ACC (ANIN-, SUP- o CTR-REVISION) no corresponde a la empresa de quien la creó. El dashboard asigna el revisor por la Categoría, así que estas incidencias pueden estar en la fila equivocada. Puede ser correcto si una parte registra en ACC observaciones de otra (por ejemplo, la Supervisión carga observaciones de ANIN): hay que revisarlas caso por caso. No se puede verificar cuando el creador ya no está en el proyecto."));
+  const lista = [...distintas].sort((a, b) => a.n - b.n);
+  llenar("tablaCategoria", lista.length ? el("table", {},
+    el("thead", {}, el("tr", {}, ["ID", "Categoría", "Fila en el dashboard", "Creado por", "Empresa del creador", "Estado", "Creado el"].map((t) => el("th", {}, t)))),
+    el("tbody", {}, lista.map((r) => el("tr", {},
+      el("td", {}, enlaceAcc(urlIncidencia(r), r.id, "Abrir la incidencia en ACC")), el("td", {}, r.cat || "–"), el("td", {}, r.rev),
+      el("td", {}, r.creador || "–"), el("td", {}, r.empCreador || "–"), el("td", {}, chipEstado(r)), el("td", {}, fecha(r.dCre))))))
+    : el("p", { class: "nota" }, "Ninguna: todas las incidencias verificables tienen la Categoría de la empresa que las creó."));
   const revs = ["ANIN", "Supervisión"].filter((rv) => rows.some((r) => r.rev === rv));
   llenar("tablaCalidad", el("table", {},
     el("thead", {}, el("tr", {}, el("th", {}, "Campo"), revs.map((rv) => el("th", { class: "num" }, rv)))),
