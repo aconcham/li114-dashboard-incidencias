@@ -96,6 +96,43 @@ def segmentos(doc):
     return None, None, None, doc
 
 
+def leer_enlaces(origen: Path):
+    """Hipervínculos de la exportación: ID → incidencia en ACC; Placement → documento con la marca de la incidencia.
+
+    Para no repetir URL largas, se guarda por fila el GUID de la incidencia (issueId) y un índice a la lista
+    de combinaciones únicas (entityId, folderUrn, viewableGuid) del documento. La página arma las URL.
+    """
+    from urllib.parse import parse_qs, urlparse
+    import openpyxl
+
+    ws = openpyxl.load_workbook(origen)["Issues"]
+    hdr = [c.value for c in ws[1]]
+    if "ID" not in hdr:
+        return {}, {}
+    i_id, i_pl = hdr.index("ID"), hdr.index("Placement") if "Placement" in hdr else None
+    enlaces, combos, base = {}, [], {}
+    for row in ws.iter_rows(min_row=2):
+        celda = row[i_id]
+        if not (celda.hyperlink and celda.hyperlink.target):
+            continue
+        u = urlparse(celda.hyperlink.target)
+        gid = parse_qs(u.query).get("issueId", [None])[0]
+        base.setdefault("issues", f"{u.scheme}://{u.netloc}{u.path}")
+        dl = None
+        if i_pl is not None and row[i_pl].hyperlink and row[i_pl].hyperlink.target:
+            d = urlparse(row[i_pl].hyperlink.target)
+            q = parse_qs(d.query)
+            base.setdefault("files", f"{d.scheme}://{d.netloc}{d.path}")
+            combo = [q.get("entityId", [""])[0], q.get("folderUrn", [""])[0], q.get("viewableGuid", [""])[0]]
+            if combo[0]:
+                if combo not in combos:
+                    combos.append(combo)
+                dl = combos.index(combo)
+        enlaces[str(celda.value).strip()] = (gid, dl)
+    base["docLinks"] = combos
+    return enlaces, base
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--carpeta", type=Path, default=CARPETA)
@@ -105,6 +142,7 @@ def main():
     origen = a.archivo or ultima_exportacion(a.carpeta)
     corte = fecha_corte(origen.name)
     df = pd.read_excel(origen, sheet_name="Issues")
+    enlaces, acc = leer_enlaces(origen)
 
     filas = []
     for _, r in df.iterrows():
@@ -143,11 +181,13 @@ def main():
             "tipoRev": txt(r.get("Tipo de revisión")),
             "desc": txt(r.get("Description")),
             "coment": txt(r.get("Comments")),
+            "gid": enlaces.get(txt(r.get("ID")), (None, None))[0],
+            "dl": enlaces.get(txt(r.get("ID")), (None, None))[1],
         })
 
     DATOS.mkdir(parents=True, exist_ok=True)
     meta = {"corte": corte.strftime("%Y-%m-%dT%H:%M"), "archivo": origen.name, "filas": len(filas),
-            "generado": datetime.now().strftime("%Y-%m-%dT%H:%M")}
+            "generado": datetime.now().strftime("%Y-%m-%dT%H:%M"), "acc": acc}
     (DATOS / "incidencias.json").write_text(
         json.dumps({"meta": meta, "incidencias": filas}, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
 

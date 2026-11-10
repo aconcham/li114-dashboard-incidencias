@@ -11,6 +11,8 @@ Es la versión web del modelo Power BI `Dashboard_Incidencias_ACC_LI114_R00.pbix
 5. **Detalle**: lista de trabajo con búsqueda, filtros y descarga en CSV. Se llega con clic desde las páginas 3 y 4.
 6. **Calidad de datos**: qué tan completos están los campos en ACC.
 
+En las tablas, el **ID ↗** abre la incidencia en ACC y el **Documento ↗** abre el archivo con la marca de la incidencia. Son los mismos hipervínculos de la exportación de Excel y requieren sesión en ACC con acceso al proyecto. El CSV de Detalle también los incluye.
+
 Los filtros (Revisor, Entregable, Tipo de revisión, Fase) aplican a todas las páginas y quedan en la URL, así que un enlace copiado abre la misma vista.
 
 > ⚠️ **El sitio es público.** Cualquiera con el enlace puede ver las incidencias, incluidas sus descripciones, comentarios y autores. Los datos vienen de una exportación de trabajo de ACC, no de un documento contractual.

@@ -41,6 +41,24 @@ const llenar = (id, ...hijos) => { const c = $(id); c.replaceChildren(...hijos.f
 const key = (color) => el("span", { class: "key", style: `background:${color}` });
 const colSit = (s) => css({ P: "--sit-p", R: "--sit-r", C: "--sit-c" }[s]);
 
+/* ---------- enlaces a ACC (requieren sesión en ACC con acceso al proyecto) ---------- */
+const enc = encodeURIComponent;
+function urlIncidencia(r) {
+  const b = META.acc && META.acc.issues;
+  return b && r.gid ? `${b}?issueId=${enc(r.gid)}` : null;
+}
+function urlDocumento(r, conMarca = true) {
+  const a = META.acc, c = a && r.dl != null ? a.docLinks[r.dl] : null;
+  if (!c || !a.files) return null;
+  let u = `${a.files}?entityId=${enc(c[0])}&folderUrn=${enc(c[1])}`;
+  if (conMarca && r.gid) u += `&issueId=${enc(r.gid)}&markups=${enc(JSON.stringify({ selection: { fbt: "issue", fbids: [r.gid] } }))}`;
+  return u + `&viewableGuid=${enc(c[2])}`;
+}
+function enlaceAcc(url, texto, titulo) {
+  if (!url) return texto;
+  return el("a", { class: "acc", href: url, target: "_blank", rel: "noopener noreferrer", title: titulo, onclick: (e) => e.stopPropagation() }, texto, el("span", { class: "ext", "aria-hidden": "true" }, " ↗"));
+}
+
 /* ---------- datos ---------- */
 function preparar(rows) {
   for (const r of rows) {
@@ -278,8 +296,8 @@ function renderAntiguedad(rows) {
   llenar("tablaAntiguas", el("table", {},
     el("thead", {}, el("tr", {}, ["ID", "Título", "Revisor", "Estado", "Documento", "Creado por", "Creado el", "Antigüedad (d)"].map((t, i) => el("th", { class: i === 7 ? "num" : null }, t)))),
     el("tbody", {}, top.map((r) => el("tr", { class: "clic", tabindex: "0", title: "Ver documento en Detalle", onclick: () => irDetalle({ doc: r.docCorto || r.doc }), onkeydown: (e) => e.key === "Enter" && irDetalle({ doc: r.docCorto || r.doc }) },
-      el("td", {}, r.id), el("td", {}, r.titulo), el("td", {}, r.rev), el("td", {}, el("span", { class: "sit" }, key(colSit(r.sit)), r.estado)),
-      el("td", {}, r.docCorto || r.doc || "–"), el("td", {}, r.creador || "–"), el("td", {}, fecha(r.dCre)),
+      el("td", {}, enlaceAcc(urlIncidencia(r), r.id, "Abrir la incidencia en ACC")), el("td", {}, r.titulo), el("td", {}, r.rev), el("td", {}, el("span", { class: "sit" }, key(colSit(r.sit)), r.estado)),
+      el("td", {}, enlaceAcc(urlDocumento(r), r.docCorto || r.doc || "–", "Abrir el documento en ACC con la marca de la incidencia")), el("td", {}, r.creador || "–"), el("td", {}, fecha(r.dCre)),
       el("td", { class: "num" }, el("div", { class: "barra-celda" }, el("i", { style: `width:${Math.max(2, (90 * r.edad) / maxE)}px` }), fmt1(r.edad))))))));
 }
 
@@ -346,7 +364,9 @@ function renderDetalle(rows) {
   const chips = [];
   if (state.doc) chips.push(["Documento", state.doc, "doc"]);
   if (state.tsr) chips.push(["Tipo", state.tsr, "tsr"]);
-  llenar("chipsDetalle", chips.map(([l, v, k]) => el("span", { class: "chip" }, `${l}: ${v}`, el("button", { type: "button", "aria-label": `Quitar filtro ${l}`, onclick: () => { state[k] = ""; state.page = 0; render(); } }, "×"))));
+  const docRow = state.doc ? DATA.find((r) => (r.docCorto === state.doc || r.doc === state.doc) && r.dl != null) : null;
+  llenar("chipsDetalle", chips.map(([l, v, k]) => el("span", { class: "chip" }, `${l}: ${v}`,
+    k === "doc" && docRow ? enlaceAcc(urlDocumento(docRow, false), "abrir en ACC", "Abrir el documento en ACC") : null, el("button", { type: "button", "aria-label": `Quitar filtro ${l}`, onclick: () => { state[k] = ""; state.page = 0; render(); } }, "×"))));
   const fs = filasDetalle(rows);
   const pags = Math.max(1, Math.ceil(fs.length / POR_PAGINA));
   state.page = Math.min(state.page, pags - 1);
@@ -355,8 +375,8 @@ function renderDetalle(rows) {
   llenar("tablaDetalle", el("table", {},
     el("thead", {}, el("tr", {}, ["ID", "Título", "Descripción", "Estado", "Revisor", "Documento", "Creado por", "Creado el", "Antig. (d)", "Comentarios"].map((t, i) => el("th", { class: i === 8 ? "num" : null }, t)))),
     el("tbody", {}, vista.map((r) => el("tr", {},
-      el("td", {}, r.id), el("td", {}, r.titulo), el("td", { class: "desc" }, r.desc || "–"), el("td", {}, el("span", { class: "sit" }, key(colSit(r.sit)), r.estado)),
-      el("td", {}, r.rev), el("td", { title: r.doc || "" }, r.docCorto || r.doc || "–"), el("td", {}, r.creador || "–"), el("td", {}, fecha(r.dCre)),
+      el("td", {}, enlaceAcc(urlIncidencia(r), r.id, "Abrir la incidencia en ACC")), el("td", {}, r.titulo), el("td", { class: "desc" }, r.desc || "–"), el("td", {}, el("span", { class: "sit" }, key(colSit(r.sit)), r.estado)),
+      el("td", {}, r.rev), el("td", {}, enlaceAcc(urlDocumento(r), r.docCorto || r.doc || "–", (r.doc || "") + " · abrir en ACC con la marca de la incidencia")), el("td", {}, r.creador || "–"), el("td", {}, fecha(r.dCre)),
       el("td", { class: "num" }, r.edad == null ? "–" : fmt1(r.edad)), el("td", { class: "coment" }, r.coment || ""))))));
   llenar("paginador",
     el("button", { type: "button", class: "boton", disabled: state.page === 0 ? "" : null, onclick: () => { state.page--; render(); } }, "‹ Anterior"),
@@ -367,7 +387,8 @@ function descargarCsv() {
   const fs = filasDetalle(filtrados());
   const cols = [["ID", "id"], ["Título", "titulo"], ["Estado", "estado"], ["Situación", (r) => SIT[r.sit]], ["Revisor", "rev"], ["Tipo", "tipo"], ["Documento", "doc"],
     ["Entregable", "entregable"], ["Tipo de revisión", "tipoRev"], ["Creado por", "creador"], ["Creado el", "creado"], ["Cerrado el", "cerrado"],
-    ["Antigüedad (d)", (r) => (r.edad == null ? "" : r.edad.toFixed(1))], ["Causa raíz", "causa"], ["Criticidad", "crit"], ["Descripción", "desc"], ["Comentarios", "coment"]];
+    ["Antigüedad (d)", (r) => (r.edad == null ? "" : r.edad.toFixed(1))], ["Causa raíz", "causa"], ["Criticidad", "crit"], ["Descripción", "desc"], ["Comentarios", "coment"],
+    ["Enlace incidencia ACC", (r) => urlIncidencia(r)], ["Enlace documento ACC", (r) => urlDocumento(r)]];
   const esc = (v) => { const s = v == null ? "" : String(v); return /[";\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
   const txt = [cols.map((c) => c[0]).join(";"), ...fs.map((r) => cols.map(([, f]) => esc(typeof f === "function" ? f(r) : r[f])).join(";"))].join("\r\n");
   const a = el("a", { href: URL.createObjectURL(new Blob(["﻿" + txt], { type: "text/csv;charset=utf-8" })), download: `incidencias_LI114_${META.corte.slice(0, 10)}.csv` });

@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Incidencias ACC · LI-114</title>
   <meta name="description" content="Seguimiento de incidencias de revisión en ACC/Forma — LI-114 Otuzco–Usquil (CUI 2597478).">
-  <link rel="stylesheet" href="styles.css?v=2">
+  <link rel="stylesheet" href="styles.css?v=5">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" defer></script>
-  <script src="app.js?v=3" defer></script>
+  <script src="app.js?v=4" defer></script>
 </head>
 <body>
   <header class="top">
@@ -90,7 +90,7 @@
       </article>
       <article class="card">
         <h2>Las 25 no cerradas más antiguas</h2>
-        <p class="nota">Clic en una fila para abrir su documento en <b>5 · Detalle</b>.</p>
+        <p class="nota">Clic en una fila → su documento en <b>5 · Detalle</b>. Clic en el ID o el documento (↗) → se abre en ACC.</p>
         <div id="tablaAntiguas" class="scroll"></div>
       </article>
     </section>
@@ -133,6 +133,7 @@
           <span id="chipsDetalle" class="chips"></span>
           <button type="button" id="btnCsv" class="boton">Descargar CSV</button>
         </div>
+        <p class="nota"><b>↗</b> ID abre la incidencia en ACC; Documento abre el archivo con la marca de la incidencia. Requiere sesión en ACC con acceso al proyecto.</p>
         <p class="nota" id="cuentaDetalle"></p>
         <div id="tablaDetalle" class="scroll"></div>
         <div class="paginador" id="paginador"></div>
