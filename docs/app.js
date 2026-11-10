@@ -11,6 +11,14 @@ const SIT = { P: "Le toca a Sinohydro", R: "Le toca al revisor", C: "Cerrada" };
 let ESTADOS = ["Borrador", "Abierta", "Pendiente", "Completada", "No aprobada", "Cerrada"];
 const CORTO = { Borrador: "Borr.", Abierta: "Abier.", Pendiente: "Pend.", Completada: "Compl.", "No aprobada": "No apr.", Cerrada: "Cerr." };
 const TOCA_TXT = { P: "le toca a Sinohydro", R: "le toca al revisor", C: null };
+const DESC_EST = {
+  Borrador: "El revisor la está redactando y todavía no la emite.",
+  Abierta: "El revisor la creó y está lista para atención. Sinohydro la pasa a Pendiente cuando recibe la notificación formal de la revisión.",
+  Pendiente: "Sinohydro recibió la notificación formal y la está atendiendo.",
+  Completada: "Sinohydro la atendió y notificó al revisor. Queda lista para que el revisor la valide en la siguiente entrega.",
+  "No aprobada": "El revisor verificó la respuesta y considera que no fue atendida. Sinohydro debe atenderla otra vez.",
+  Cerrada: "El revisor verificó la respuesta y la da por atendida. Es la única que cuenta como resuelta en el KPI I1.",
+};
 const TOCA_EST = { Borrador: "R", Abierta: "P", Pendiente: "P", Completada: "R", "No aprobada": "P", Cerrada: "C" };
 const RANGOS = [["0-7 d", 0, 7], ["8-15 d", 7, 15], ["16-30 d", 15, 30], ["31-60 d", 30, 60], ["> 60 d", 60, Infinity]];
 
@@ -184,8 +192,33 @@ function semanas(rows) {
 const etiquetaSemana = (w) => w.toLocaleDateString("es-PE", { day: "2-digit", month: "short" });
 
 /* ---------- 1 Resumen ---------- */
-function tile(lab, val, sub, color) {
-  return el("div", { class: "tile" }, el("div", { class: "lab" }, color ? key(color) : null, lab), el("div", { class: "val" }, val), sub ? el("div", { class: "sub" }, sub) : null);
+function tile(lab, val, sub, color, info) {
+  return el("div", { class: "tile" }, el("div", { class: "lab" }, color ? key(color) : null, el("span", {}, lab),
+    info ? el("button", { type: "button", class: "info", "aria-label": `Qué es: ${lab}`, "data-tip": info }, "i") : null),
+    el("div", { class: "val" }, val), sub ? el("div", { class: "sub" }, sub) : null);
+}
+
+/* ---------- ayuda al pasar el mouse (o al tocar / enfocar con teclado) ---------- */
+function mostrarAyuda(btn) {
+  const tt = $("tt");
+  tt.textContent = btn.dataset.tip;
+  tt.hidden = false;
+  const r = btn.getBoundingClientRect(), w = tt.offsetWidth, h = tt.offsetHeight;
+  const x = Math.min(Math.max(8, r.left + r.width / 2 - w / 2), innerWidth - w - 8);
+  const y = r.bottom + 6 + h > innerHeight - 8 ? r.top - h - 6 : r.bottom + 6;
+  tt.style.left = x + "px"; tt.style.top = y + "px";
+  btn.setAttribute("aria-describedby", "tt");
+}
+function ocultarAyuda() { $("tt").hidden = true; document.querySelectorAll("[aria-describedby=tt]").forEach((b) => b.removeAttribute("aria-describedby")); }
+function iniciarAyuda() {
+  const sobre = (e) => e.target.closest && e.target.closest(".info");
+  document.addEventListener("mouseover", (e) => { const b = sobre(e); if (b) mostrarAyuda(b); });
+  document.addEventListener("mouseout", (e) => { if (sobre(e)) ocultarAyuda(); });
+  document.addEventListener("focusin", (e) => { const b = sobre(e); if (b) mostrarAyuda(b); });
+  document.addEventListener("focusout", (e) => { if (sobre(e)) ocultarAyuda(); });
+  document.addEventListener("click", (e) => { const b = sobre(e); if (b) { e.stopPropagation(); $("tt").hidden ? mostrarAyuda(b) : ocultarAyuda(); } else ocultarAyuda(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") ocultarAyuda(); });
+  addEventListener("scroll", ocultarAyuda, { passive: true });
 }
 function barraProgreso(v, etiqueta = false) {
   return el("div", { class: "progreso", role: "img", "aria-label": `I1 ${pct(v)} de meta 75 %` },
@@ -198,10 +231,14 @@ function renderResumen(rows) {
   const cre7 = rows.filter((r) => r.dCre && r.dCre > hace7).length, cer7 = rows.filter((r) => r.dCer && r.dCer > hace7).length;
   const v7 = cre7 - cer7;
   llenar("tilesResumen",
-    tile("Incidencias", fmt(c.total), `${fmt(c.P)} le tocan a Sinohydro · ${fmt(c.R)} al revisor`),
-    tile("Cierres que faltan para el 75 %", fmt(c.faltan)),
-    tile("Variación del saldo (7 días)", (v7 > 0 ? "+" : "") + fmt(v7), `${fmt(cre7)} creadas · ${fmt(cer7)} cerradas`));
-  llenar("tilesEstados", ESTADOS.map((e) => tile(e, fmt(c.est[e]), TOCA_TXT[TOCA_EST[e] || "P"], colEst(e))));
+    tile("Incidencias", fmt(c.total), `${fmt(c.P)} le tocan a Sinohydro · ${fmt(c.R)} al revisor`, null,
+      "Total de incidencias de la exportación de ACC, con los filtros aplicados. Le tocan a Sinohydro las Abiertas, Pendientes y No aprobadas; al revisor, las Completadas y los Borradores."),
+    tile("Cierres que faltan para el 75 %", fmt(c.faltan), null, null,
+      "Cuántas incidencias más tendrían que pasar a Cerrada para que el KPI I1 llegue a la meta: 75 % del total menos las cerradas. Si se crean incidencias nuevas, la cifra sube."),
+    tile("Variación del saldo (7 días)", (v7 > 0 ? "+" : "") + fmt(v7), `${fmt(cre7)} creadas · ${fmt(cer7)} cerradas`, null,
+      "Cuánto cambió el saldo (incidencias no cerradas) en los 7 días anteriores al corte: creadas en esos 7 días menos cerradas en esos 7 días. Negativo = el saldo bajó porque se cerró más de lo que entró. Positivo = el saldo creció."));
+  llenar("tilesEstados", ESTADOS.map((e) => tile(e, fmt(c.est[e]), TOCA_TXT[TOCA_EST[e] || "P"], colEst(e),
+    DESC_EST[e] || "Estado de ACC que el dashboard no tiene registrado. Se cuenta como de Sinohydro hasta asignarlo.")));
 
   const ok = c.i1 >= META_I1;
   const porRev = ["ANIN", "Supervisión"].map((rv) => [rv, contar(rows.filter((r) => r.rev === rv))]).filter(([, x]) => x.total);
@@ -286,10 +323,14 @@ function irDetalle(filtro) {
 function renderAntiguedad(rows) {
   const nc = rows.filter((r) => r.sit !== "C");
   llenar("tilesAntig",
-    tile("Antigüedad promedio de las no cerradas", fmt1(promedio(nc.map((r) => r.edad))) + " d"),
-    tile("Días hasta el cierre (mediana)", fmt1(mediana(rows.filter((r) => r.diasCierre != null).map((r) => r.diasCierre))) + " d"),
-    tile(`Le toca a Sinohydro > ${UMBRAL_PEND} días`, fmt(nc.filter((r) => r.sit === "P" && r.edad > UMBRAL_PEND).length), "Abierta, Pendiente o No aprobada · umbral provisional"),
-    tile("No cerradas > 30 días", fmt(nc.filter((r) => r.edad > 30).length)));
+    tile("Antigüedad promedio de las no cerradas", fmt1(promedio(nc.map((r) => r.edad))) + " d", null, null,
+      "Promedio de días desde que se creó cada incidencia hasta la fecha de corte. Solo cuenta las no cerradas (cualquier estado distinto de Cerrada)."),
+    tile("Días hasta el cierre (mediana)", fmt1(mediana(rows.filter((r) => r.diasCierre != null).map((r) => r.diasCierre))) + " d", null, null,
+      "Días entre la creación y el cierre de las incidencias Cerradas. La mediana es el valor del medio: la mitad se cerró en menos días y la otra mitad en más. Se usa en vez del promedio para que unas pocas incidencias muy lentas no lo distorsionen."),
+    tile(`Le toca a Sinohydro > ${UMBRAL_PEND} días`, fmt(nc.filter((r) => r.sit === "P" && r.edad > UMBRAL_PEND).length), "Abierta, Pendiente o No aprobada · umbral provisional", null,
+      `Incidencias en Abierta, Pendiente o No aprobada con más de ${UMBRAL_PEND} días desde que se crearon (no desde su último cambio de estado). El umbral es provisional: el contrato fija plazos por entregable, no por incidencia.`),
+    tile("No cerradas > 30 días", fmt(nc.filter((r) => r.edad > 30).length), null, null,
+      "Incidencias en cualquier estado distinto de Cerrada con más de 30 días desde que se crearon."));
   const porRango = (e) => RANGOS.map(([lab]) => nc.filter((r) => r.rango === lab && r.estado === e).length);
   grafico("chRangos", {
     type: "bar",
@@ -406,7 +447,8 @@ function descargarCsv() {
 function renderCalidad(rows) {
   const campos = [["Fecha de vencimiento", (r) => r.venc], ["Criticidad", (r) => r.crit], ["Causa raíz", (r) => r.causa], ["Entregable", (r) => r.entregable]];
   const p = (rs, f) => (rs.length ? rs.filter(f).length / rs.length : null);
-  llenar("tilesCalidad", campos.map(([l, f]) => { const v = p(rows, f); return tile(`% con ${l.toLowerCase()}`, pct(v), v < 0.5 ? "✕ insuficiente" : "✓ aceptable"); }));
+  llenar("tilesCalidad", campos.map(([l, f]) => { const v = p(rows, f); return tile(`% con ${l.toLowerCase()}`, pct(v), v < 0.5 ? "✕ insuficiente" : "✓ aceptable", null,
+    `Porcentaje de incidencias que tienen el campo «${l}» lleno en ACC. Menos de 50 % se marca como insuficiente: las medidas que dependen de ese campo no son representativas.`); }));
   const revs = ["ANIN", "Supervisión"].filter((rv) => rows.some((r) => r.rev === rv));
   llenar("tablaCalidad", el("table", {},
     el("thead", {}, el("tr", {}, el("th", {}, "Campo"), revs.map((rv) => el("th", { class: "num" }, rv)))),
@@ -453,6 +495,7 @@ async function iniciar() {
   let t; $("buscar").addEventListener("input", (e) => { clearTimeout(t); t = setTimeout(() => { state.q = e.target.value; state.page = 0; render(); $("buscar").focus(); }, 250); });
   $("fSit").addEventListener("change", (e) => { state.sit = e.target.value; state.page = 0; render(); });
   $("btnCsv").addEventListener("click", descargarCsv);
+  iniciarAyuda();
   $("btnTema").addEventListener("click", () => {
     const oscuro = document.documentElement.dataset.theme ? document.documentElement.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
     document.documentElement.dataset.theme = oscuro ? "light" : "dark";
