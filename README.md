@@ -2,7 +2,7 @@
 
 Página web estática (GitHub Pages) para seguir las incidencias de revisión de ACC/Forma del proyecto **"Mejoramiento y ampliación del servicio de transitabilidad vial interurbana en la vía departamental LI-114: tramo Otuzco – Usquil"** (CUI 2597478).
 
-Es la versión web del modelo Power BI `Dashboard_Incidencias_ACC_LI114_R00.pbix`, con las mismas reglas y páginas:
+Tiene 6 páginas:
 
 1. **Resumen**: incidencias por **estado de ACC**, KPI I1 (meta ≥ 75 %, EIR p.25–26), estado por revisor, saldo semanal y **avance entre cortes**.
 2. **Tendencia**: creadas vs. cerradas por semana, acumulados y resumen mensual.
@@ -46,7 +46,7 @@ Luego abrir http://localhost:8114. Si se abre el `index.html` con doble clic, el
 
 | Ruta | Contenido |
 |---|---|
-| `build_data.py` | Convierte la exportación de ACC en `docs/data/*.json`. Aplica las mismas reglas que la consulta Power Query |
+| `build_data.py` | Convierte la exportación de ACC en `docs/data/*.json`. Aplica las reglas de estados, a quién le toca y revisor |
 | `docs/index.html`, `docs/app.js`, `docs/styles.css` | La página. Usa Chart.js 4.4.1 desde cdnjs; no requiere compilación |
 | `docs/data/incidencias.json` | Una fila por incidencia y los metadatos del corte |
 | `docs/data/historial.json` | Un resumen por corte publicado |

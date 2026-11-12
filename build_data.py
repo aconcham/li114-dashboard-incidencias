@@ -1,7 +1,6 @@
 """Genera los datos del dashboard web desde la exportación 'Resumen de incidencias' de ACC/Forma.
 
-Replica las reglas de la consulta Power Query del modelo Power BI
-(plantillas/02_Formatos_Propios/Dashboard_Incidencias_ACC_LI114_R00.pbix):
+Aplica las reglas del dashboard:
 estado en español, a quién le toca, revisor, segmentos del código del documento, etc.
 
 Uso:
