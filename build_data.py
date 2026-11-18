@@ -15,6 +15,7 @@ Salida:
 
 import argparse
 import json
+import os
 import re
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -25,7 +26,23 @@ import pandas as pd
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-CARPETA = Path(r"G:\My Drive\LI-114_OTUZCO_USQUIL\insumos\05_Incidencias_ACC")
+# Carpeta de exportaciones dentro del vault en Google Drive. El nombre de la raíz de Drive
+# depende del idioma de Windows ("My Drive" en inglés, "Mi unidad" en español), así que se
+# prueban ambas. La variable de entorno LI114_INCIDENCIAS, si existe, tiene prioridad.
+SUBRUTA = Path("LI-114_OTUZCO_USQUIL", "insumos", "05_Incidencias_ACC")
+CANDIDATAS = [Path(r"G:\My Drive") / SUBRUTA, Path(r"G:\Mi unidad") / SUBRUTA]
+
+
+def carpeta_por_defecto() -> Path:
+    if os.environ.get("LI114_INCIDENCIAS"):
+        return Path(os.environ["LI114_INCIDENCIAS"])
+    for c in CANDIDATAS:
+        if c.is_dir():
+            return c
+    return CANDIDATAS[0]  # no existe ninguna: ultima_exportacion() lo avisará
+
+
+CARPETA = carpeta_por_defecto()
 RAIZ = Path(__file__).resolve().parent
 DATOS = RAIZ / "docs" / "data"
 

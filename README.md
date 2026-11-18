@@ -20,7 +20,7 @@ Los filtros (Revisor, Entregable, Tipo de revisión, Fase) aplican a todas las p
 ## Actualizar con un nuevo corte
 
 1. En ACC: **Incidencias → Exportar todo → Exportar informe → Resumen de incidencias → Excel**, sin filtros y sin cubierta ni índice.
-2. Guardar el archivo **sin cambiarle el nombre** en `G:\My Drive\LI-114_OTUZCO_USQUIL\insumos\05_Incidencias_ACC\`.
+2. Guardar el archivo **sin cambiarle el nombre** en `G:\My Drive\LI-114_OTUZCO_USQUIL\insumos\05_Incidencias_ACC\` (en un Windows en español la raíz de Drive se llama `G:\Mi unidad`; el script prueba las dos y también acepta la variable de entorno `LI114_INCIDENCIAS`).
 3. Desde esta carpeta, ejecutar:
 
 ```bash
