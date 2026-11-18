@@ -94,6 +94,24 @@ h2 { font-size: 14px; margin: 0 0 4px; font-weight: 600; }
   padding: 16px 24px 8px; max-width: 1440px; margin: 0 auto;
 }
 .corte { margin: 2px 0 0; color: var(--ink-2); font-size: 13px; }
+/* Cabecera: ANIN (Parte que Designa) a la izquierda, POWERCHINA · Sinohydro (contratista) a la derecha.
+   Cada logo va sobre fondo blanco fijo: tienen texto azul marino y negro que no se leería en modo oscuro. */
+.top .titulo { flex: 1 1 auto; min-width: 0; }
+.acciones { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+.logo {
+  display: flex; align-items: center; flex-shrink: 0;
+  background: #ffffff; border: 1px solid var(--line); border-radius: 10px; padding: 6px 12px;
+}
+.logo img { display: block; width: auto; }
+.logo-anin { height: 36px; }
+.logo-sinohydro { height: 40px; }
+@media (max-width: 640px) {
+  .top { flex-wrap: wrap; padding: 12px 16px 8px; }
+  .top .titulo { order: 3; flex: 1 1 100%; }
+  .logo { padding: 4px 8px; }
+  .logo-anin { height: 26px; }
+  .logo-sinohydro { height: 30px; }
+}
 .tema { background: none; border: 1px solid var(--line); color: var(--ink-2); border-radius: 8px; width: 34px; height: 34px; cursor: pointer; font-size: 16px; }
 
 .tabs {
