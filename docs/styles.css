@@ -147,6 +147,19 @@ select, input[type="search"] {
 .boton { background: var(--surface); border: 1px solid var(--line); color: var(--ink); border-radius: 6px; padding: 6px 12px; cursor: pointer; font: inherit; }
 .boton:hover { border-color: var(--accent); }
 
+/* Barra fija (escritorio): cabecera + pestañas + filtros quedan arriba al hacer scroll, a tamaño completo.
+   En celular solo quedan fijos los filtros: el contenedor se "disuelve" (display: contents). */
+.barra-fija { position: sticky; top: 0; z-index: 6; background: var(--bg); }
+.barra-fija .filtros { position: static; }
+@media (max-width: 640px) {
+  .barra-fija { display: contents; }
+  .barra-fija .filtros { position: sticky; }
+}
+/* Tablas sin scroll propio: su fila de encabezados queda justo debajo de la barra fija. */
+main th { top: var(--alto-barra, 0px); }
+main .scroll th { top: 0; }
+@media (max-width: 640px) { main th { top: 0; } }
+
 main { max-width: 1440px; margin: 0 auto; padding: 16px 24px 8px; }
 .pagina { display: flex; flex-direction: column; gap: 16px; }
 .grid { display: grid; gap: 16px; }

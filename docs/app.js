@@ -520,6 +520,7 @@ async function iniciar() {
   $("fSit").addEventListener("change", (e) => { state.sit = e.target.value; state.page = 0; render(); });
   $("btnCsv").addEventListener("click", descargarCsv);
   iniciarAyuda();
+  iniciarBarraFija();
   $("btnTema").addEventListener("click", () => {
     const oscuro = document.documentElement.dataset.theme ? document.documentElement.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
     document.documentElement.dataset.theme = oscuro ? "light" : "dark";
@@ -530,6 +531,17 @@ async function iniciar() {
   window.addEventListener("hashchange", () => { leerHash(); render(); });
   leerHash();
   render();
+}
+
+// Barra fija: publica su altura en --alto-barra para que los encabezados de tabla fijos queden debajo de ella.
+function iniciarBarraFija() {
+  const barra = $("barraFija");
+  if (!barra) return;
+  const ancho = matchMedia("(min-width: 641px)");
+  const actualizar = () => document.documentElement.style.setProperty("--alto-barra", (ancho.matches ? barra.offsetHeight : 0) + "px");
+  new ResizeObserver(actualizar).observe(barra);
+  ancho.addEventListener("change", actualizar);
+  actualizar();
 }
 
 try { const t = localStorage.getItem("tema"); if (t) document.documentElement.dataset.theme = t; } catch (_) { /* sin almacenamiento */ }

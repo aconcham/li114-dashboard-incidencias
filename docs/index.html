@@ -9,11 +9,12 @@
   <link rel="icon" href="img/icono-32.png" type="image/png" sizes="32x32">
   <link rel="icon" href="img/icono-192.png" type="image/png" sizes="192x192">
   <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
-  <link rel="stylesheet" href="styles.css?v=13">
+  <link rel="stylesheet" href="styles.css?v=16">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" defer></script>
-  <script src="app.js?v=9" defer></script>
+  <script src="app.js?v=11" defer></script>
 </head>
 <body>
+  <div class="barra-fija" id="barraFija">
   <header class="top">
     <div class="logo logo-izq">
       <img src="img/logo-anin.png" alt="ANIN · Autoridad Nacional de Infraestructura" class="logo-anin" width="191" height="56">
@@ -47,6 +48,7 @@
     <label>Fase documento <select id="fFase"></select></label>
     <button type="button" id="btnLimpiar" class="link">Limpiar filtros</button>
   </section>
+  </div>
 
   <main>
     <!-- 1 Resumen -->
