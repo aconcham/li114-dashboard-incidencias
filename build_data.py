@@ -57,6 +57,26 @@ ORDEN_ESTADOS = list(ESTADOS.values())
 #   C = Cerrada
 TOCA = {"Abierta": "P", "Pendiente": "P", "No aprobada": "P", "Completada": "R", "Borrador": "R", "Cerrada": "C"}
 
+# ACC exporta en el idioma de la interfaz de quien descarga. Con ACC en español cambian el nombre de la hoja,
+# los encabezados y los estados (las columnas personalizadas del proyecto ya vienen en español).
+# Se normaliza todo a los nombres en inglés que usa este script.
+HOJAS = ["Issues", "Incidencias"]
+COLUMNAS_ES = {
+    "Título": "Title", "Estado": "Status", "Categoría": "Category", "Tipo": "Type", "Descripción": "Description",
+    "Asignado a": "Assigned to", "Empresa": "Company", "Observadores": "Watchers", "Creado por": "Created by",
+    "Creado el": "Created on", "Vencimiento": "Due date", "Fecha de inicio": "Start date", "Ubicación": "Location",
+    "Detalles de la ubicación": "Location details", "Posición": "Placement", "Causa principal": "Root cause",
+    "Publicado": "Published", "Actualizado por": "Updated by", "Actualizado el": "Updated on",
+    "Cerrado por": "Closed by", "Cerrado el": "Closed at", "Comentarios": "Comments",
+}
+ESTADOS.update({"Borrador": "Borrador", "Abierto": "Abierta", "Pendiente": "Pendiente", "Completado": "Completada",
+                "No aprobada": "No aprobada", "Cerrado": "Cerrada"})
+RETIRADO = ("(Removed)", "(Eliminado)")
+
+
+def nombre_hoja(nombres):
+    return next((h for h in HOJAS if h in nombres), nombres[0])
+
 
 def ultima_exportacion(carpeta: Path) -> Path:
     archivos = sorted(p for p in carpeta.glob("Resumen de incidencias*.xlsx") if not p.name.startswith("~$"))
@@ -88,7 +108,8 @@ def iso(v):
 
 def persona(v):
     s = txt(v)
-    return None if s is None else s.split("\n")[0].strip()
+    # En español ACC marca al usuario retirado con "(Eliminado)"; se deja "(Removed)" como en los cortes anteriores.
+    return None if s is None else s.split("\n")[0].strip().replace("(Eliminado)", "(Removed)")
 
 
 def empresa(v):
@@ -97,7 +118,7 @@ def empresa(v):
         return None
     if "\n" in s:
         return s.split("\n")[-1].strip()
-    return "Usuario retirado" if "(Removed)" in s else s
+    return "Usuario retirado" if any(m in s for m in RETIRADO) else s
 
 
 def revisor(categoria):
@@ -129,8 +150,9 @@ def leer_enlaces(origen: Path):
     from urllib.parse import parse_qs, urlparse
     import openpyxl
 
-    ws = openpyxl.load_workbook(origen)["Issues"]
-    hdr = [c.value for c in ws[1]]
+    wb = openpyxl.load_workbook(origen)
+    ws = wb[nombre_hoja(wb.sheetnames)]
+    hdr = [COLUMNAS_ES.get(c.value, c.value) for c in ws[1]]
     if "ID" not in hdr:
         return {}, {}
     i_id, i_pl = hdr.index("ID"), hdr.index("Placement") if "Placement" in hdr else None
@@ -165,7 +187,11 @@ def main():
 
     origen = a.archivo or ultima_exportacion(a.carpeta)
     corte = fecha_corte(origen.name)
-    df = pd.read_excel(origen, sheet_name="Issues")
+    hojas = pd.read_excel(origen, sheet_name=None)
+    hoja = nombre_hoja(list(hojas))
+    df = hojas[hoja].rename(columns=COLUMNAS_ES)
+    if hoja != "Issues":
+        print(f"Exportación en español (hoja «{hoja}»): encabezados y estados normalizados.")
     enlaces, acc = leer_enlaces(origen)
 
     filas = []
