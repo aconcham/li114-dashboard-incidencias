@@ -24,7 +24,8 @@ const RANGOS = [["0-7 d", 0, 7], ["8-15 d", 7, 15], ["16-30 d", 15, 30], ["31-60
 
 let DATA = [], META = {}, HIST = [], CORTE = null;
 const charts = {};
-const state = { tab: "resumen", rev: "", ent: "", trv: "", fase: "", q: "", sit: "", doc: "", tsr: "", page: 0 };
+const LIMPIO_DET = { q: "", en: "", sit: "", doc: "", tsr: "", cre: "", desde: "", hasta: "", amin: "" };
+const state = Object.assign({ tab: "resumen", rev: "", ent: "", trv: "", fase: "", page: 0 }, LIMPIO_DET);
 
 /* ---------- utilidades ---------- */
 const $ = (id) => document.getElementById(id);
@@ -55,6 +56,10 @@ const llenar = (id, ...hijos) => { const c = $(id); c.replaceChildren(...hijos.f
 const key = (color) => el("span", { class: "key", style: `background:${color}` });
 const colEst = (e) => { const i = ["Borrador", "Abierta", "Pendiente", "Completada", "No aprobada", "Cerrada"].indexOf(e); return i < 0 ? css("--ink-3") : css(`--est-${i}`); };
 const estadosAbiertos = () => ESTADOS.filter((e) => e !== "Cerrada");
+// Nombre completo del archivo en ACC, con extensión (p. ej. 600015-…-000001.pdf).
+const nomDoc = (r) => (r.doc ? r.doc + (r.ext ? "." + r.ext : "") : "–");
+// En pantalla: código sin los campos fijos (proyecto-originador-activo-nivel) ni extensión; el nombre completo va en la ayuda emergente.
+const docVis = (r) => r.docCorto || r.doc || "–";
 const chipEstado = (r) => el("span", { class: "sit" }, key(colEst(r.estado)), r.estado);
 
 /* ---------- enlaces a ACC (requieren sesión en ACC con acceso al proyecto) ---------- */
@@ -76,6 +81,9 @@ function enlaceAcc(url, texto, titulo) {
 }
 
 /* ---------- datos ---------- */
+// Búsqueda sin distinguir mayúsculas ni tildes ("supervision" encuentra "Supervisión").
+const plano = (s) => (s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+const CAMPOS_TXT = ["id", "titulo", "tipo", "desc", "doc", "coment", "creador"];
 function preparar(rows) {
   for (const r of rows) {
     r.dCre = r.creado ? new Date(r.creado) : null;
@@ -84,7 +92,8 @@ function preparar(rows) {
     r.diasCierre = r.dCer && r.dCre ? (r.dCer - r.dCre) / DIA : null;
     r.edad = r.sit !== "C" && r.dCre ? (CORTE - r.dCre) / DIA : null;
     r.rango = r.edad == null ? null : RANGOS.find(([, a, b]) => r.edad > a - (a === 0 ? 1 : 0) && r.edad <= b)[0];
-    r.texto = [r.id, r.titulo, r.desc, r.doc, r.coment, r.creador, r.tipo].filter(Boolean).join(" ").toLowerCase();
+    r.bus = Object.fromEntries(CAMPOS_TXT.map((k) => [k, plano(k === "doc" && r.doc ? nomDoc(r) : r[k])]));
+    r.texto = Object.values(r.bus).join(" ");
   }
   return rows;
 }
@@ -108,11 +117,11 @@ function leerHash() {
   const [tab, qs] = location.hash.slice(1).split("?");
   if (tab) state.tab = tab;
   const p = new URLSearchParams(qs || "");
-  for (const k of ["rev", "ent", "trv", "fase", "q", "sit", "doc", "tsr"]) state[k] = p.get(k) || "";
+  for (const k of ["rev", "ent", "trv", "fase", "q", "en", "sit", "doc", "tsr", "cre", "desde", "hasta", "amin"]) state[k] = p.get(k) || "";
 }
 function escribirHash() {
   const p = new URLSearchParams();
-  for (const k of ["rev", "ent", "trv", "fase", "q", "sit", "doc", "tsr"]) if (state[k]) p.set(k, state[k]);
+  for (const k of ["rev", "ent", "trv", "fase", "q", "en", "sit", "doc", "tsr", "cre", "desde", "hasta", "amin"]) if (state[k]) p.set(k, state[k]);
   const h = "#" + state.tab + (p.toString() ? "?" + p : "");
   if (location.hash !== h) history.replaceState(null, "", h);
 }
@@ -324,7 +333,7 @@ function renderTendencia(rows) {
 
 /* ---------- 3 Antigüedad ---------- */
 function irDetalle(filtro) {
-  Object.assign(state, { doc: "", tsr: "", q: "", sit: "NC", page: 0 }, filtro);
+  Object.assign(state, LIMPIO_DET, { sit: "NC", page: 0 }, filtro);
   cambiarTab("detalle");
 }
 function renderAntiguedad(rows) {
@@ -350,9 +359,9 @@ function renderAntiguedad(rows) {
   const maxE = top.length ? top[0].edad : 1;
   llenar("tablaAntiguas", el("table", {},
     el("thead", {}, el("tr", {}, ["ID", "Título", "Revisor", "Estado", "Documento", "Creado por", "Creado el", "Antigüedad (d)"].map((t, i) => el("th", { class: i === 7 ? "num" : null }, t)))),
-    el("tbody", {}, top.map((r) => el("tr", { class: "clic", tabindex: "0", title: "Ver documento en Detalle", onclick: () => irDetalle({ doc: r.docCorto || r.doc }), onkeydown: (e) => e.key === "Enter" && irDetalle({ doc: r.docCorto || r.doc }) },
+    el("tbody", {}, top.map((r) => el("tr", { class: "clic", tabindex: "0", title: "Ver documento en Detalle", onclick: () => irDetalle({ doc: r.doc }), onkeydown: (e) => e.key === "Enter" && irDetalle({ doc: r.doc }) },
       el("td", {}, enlaceAcc(urlIncidencia(r), r.id, "Abrir la incidencia en ACC")), el("td", {}, r.titulo), el("td", {}, r.rev), el("td", {}, chipEstado(r)),
-      el("td", {}, enlaceAcc(urlDocumento(r), r.docCorto || r.doc || "–", "Abrir el documento en ACC con la marca de la incidencia")), el("td", {}, r.creador || "–"), el("td", {}, fecha(r.dCre)),
+      el("td", {}, enlaceAcc(urlDocumento(r), docVis(r), nomDoc(r) + " · abrir en ACC con la marca de la incidencia")), el("td", {}, r.creador || "–"), el("td", {}, fecha(r.dCre)),
       el("td", { class: "num" }, el("div", { class: "barra-celda" }, el("i", { style: `width:${Math.max(2, (90 * r.edad) / maxE)}px` }), fmt1(r.edad))))))));
 }
 
@@ -372,7 +381,7 @@ function renderEspecialidad(rows) {
       el("td", { class: "num" }, fmt(e.c.total)), el("td", { class: "num" }, fmt1(e.med)))))));
 
   const docs = new Map();
-  for (const r of rows) if (r.sit !== "C") { const k = r.docCorto || r.doc || "(sin documento)"; const d = docs.get(k) || docs.set(k, { est: {}, nc: 0, doc: r.doc }).get(k); d.est[r.estado] = (d.est[r.estado] || 0) + 1; d.nc++; }
+  for (const r of rows) if (r.sit !== "C") { const k = r.docCorto || r.doc || "(sin documento)"; const d = docs.get(k) || docs.set(k, { est: {}, nc: 0, doc: r.doc, ext: r.ext }).get(k); d.est[r.estado] = (d.est[r.estado] || 0) + 1; d.nc++; }
   const top = [...docs.entries()].map(([k, v]) => ({ k, ...v })).sort((a, b) => b.nc - a.nc).slice(0, 15);
   grafico("chDocs", {
     type: "bar",
@@ -382,7 +391,7 @@ function renderEspecialidad(rows) {
       scales: { x: { stacked: true, beginAtZero: true, grid: { color: css("--grid") }, ticks: { color: css("--ink-2"), precision: 0 } }, y: { stacked: true, grid: { display: false }, ticks: { color: css("--ink-2"), autoSkip: false, font: { size: 11 } } } },
       onClick: (_e, items, chart) => { const i = items.length ? items[0].index : null; if (i != null) irDetalle({ doc: chart.data.labels[i] }); },
       onHover: (e, items) => { e.native.target.style.cursor = items.length ? "pointer" : "default"; },
-      plugins: Object.assign(baseOpts().plugins, { tooltip: Object.assign(baseOpts().plugins.tooltip, { callbacks: { title: (it) => top[it[0].dataIndex].doc || it[0].label, footer: (it) => `No cerradas: ${fmt(top[it[0].dataIndex].nc)} · clic → Detalle` } }), etiquetas: { mostrar: true } }),
+      plugins: Object.assign(baseOpts().plugins, { tooltip: Object.assign(baseOpts().plugins.tooltip, { callbacks: { title: (it) => (top[it[0].dataIndex].doc ? nomDoc(top[it[0].dataIndex]) : it[0].label), footer: (it) => `No cerradas: ${fmt(top[it[0].dataIndex].nc)} · clic → Detalle` } }), etiquetas: { mostrar: true } }),
     }),
     plugins: [etiquetas],
   });
@@ -406,19 +415,58 @@ function renderEspecialidad(rows) {
 
 /* ---------- 5 Detalle ---------- */
 const POR_PAGINA = 50;
+// Campos de "Buscar en"; "" = todos.
+const BUSCAR_EN = [["", "Todo"], ["id", "ID"], ["titulo", "Título / tipo"], ["desc", "Descripción"], ["doc", "Documento"], ["coment", "Comentarios"], ["creador", "Creado por"]];
+const AYUDA_EN = { "": "Buscar en todo · usa #1000 para un ID exacto", id: "N.º de ID exacto: 1000 · varios: 1000, 1506 · rango: 1000-1010" };
+// "1000", "#1000", "1000, 1506", "1000-1010" → [[desde, hasta], …]; null si no es una lista de IDs.
+function rangosId(q) {
+  const out = [];
+  for (const p of q.split(/[\s,;]+/).filter(Boolean)) {
+    const m = p.replace(/#/g, "").match(/^(\d+)(?:-(\d+))?$/);
+    if (!m) return null;
+    const a = +m[1], b = m[2] ? +m[2] : a;
+    out.push([Math.min(a, b), Math.max(a, b)]);
+  }
+  return out.length ? out : null;
+}
+function coincideTexto(q, en) {
+  if (!q) return () => true;
+  // ID exacto: con "Buscar en = ID", o en "Todo" si se escribe con # (p. ej. #1000).
+  if (en === "id" || (!en && q.startsWith("#"))) {
+    const rs = rangosId(q);
+    return rs ? (r) => rs.some(([a, b]) => r.n >= a && r.n <= b) : () => false;
+  }
+  // Varias palabras: deben aparecer todas, en cualquier orden.
+  const terminos = plano(q).split(/\s+/).filter(Boolean);
+  const campos = en === "titulo" ? ["titulo", "tipo"] : en ? [en] : null;
+  return (r) => { const t = campos ? campos.map((k) => r.bus[k]).join(" ") : r.texto; return terminos.every((x) => t.includes(x)); };
+}
+const nAvanzados = () => ["tsr", "cre", "desde", "hasta", "amin"].filter((k) => state[k]).length;
 function filasDetalle(rows) {
-  const q = state.q.trim().toLowerCase();
+  const q = state.q.trim();
+  const ok = coincideTexto(q, state.en);
+  const nq = /^#?\d+$/.test(q) ? +q.replace("#", "") : null;
+  const amin = state.amin ? +state.amin : null;
   return rows.filter((r) =>
     (!state.doc || r.docCorto === state.doc || r.doc === state.doc) && (!state.tsr || (r.tsr || "(sin tipo)") === state.tsr) &&
-    (!state.sit || (state.sit === "NC" ? r.sit !== "C" : ["P", "R", "C"].includes(state.sit) ? r.sit === state.sit : r.estado === state.sit)) && (!q || r.texto.includes(q)))
-    .sort((a, b) => (b.edad ?? -1) - (a.edad ?? -1) || b.n - a.n);
+    (!state.sit || (state.sit === "NC" ? r.sit !== "C" : ["P", "R", "C"].includes(state.sit) ? r.sit === state.sit : r.estado === state.sit)) &&
+    (!state.cre || (r.creador || "(sin dato)") === state.cre) &&
+    (!state.desde || (r.creado && r.creado.slice(0, 10) >= state.desde)) && (!state.hasta || (r.creado && r.creado.slice(0, 10) <= state.hasta)) &&
+    (amin == null || (r.edad != null && r.edad >= amin)) && ok(r))
+    // Si se busca un número, el ID exacto va primero; después, por antigüedad.
+    .sort((a, b) => (b.n === nq) - (a.n === nq) || (b.edad ?? -1) - (a.edad ?? -1) || b.n - a.n);
 }
 function renderDetalle(rows) {
   $("buscar").value = state.q;
+  $("buscar").placeholder = AYUDA_EN[state.en] || "Buscar en " + BUSCAR_EN.find(([k]) => k === state.en)[1].toLowerCase() + "…";
+  $("fEn").value = state.en;
   $("fSit").value = state.sit;
+  for (const [id, k] of [["fTsr", "tsr"], ["fCre", "cre"], ["fDesde", "desde"], ["fHasta", "hasta"], ["fAmin", "amin"]]) $(id).value = state[k];
+  const na = nAvanzados();
+  $("sumAvanzados").textContent = "Filtros avanzados" + (na ? ` (${na})` : "");
+  if (na) $("avanzados").open = true;
   const chips = [];
-  if (state.doc) chips.push(["Documento", state.doc, "doc"]);
-  if (state.tsr) chips.push(["Tipo", state.tsr, "tsr"]);
+  if (state.doc) { const d = DATA.find((r) => r.docCorto === state.doc || r.doc === state.doc); chips.push(["Documento", d ? docVis(d) : state.doc, "doc"]); }
   const docRow = state.doc ? DATA.find((r) => (r.docCorto === state.doc || r.doc === state.doc) && r.dl != null) : null;
   llenar("chipsDetalle", chips.map(([l, v, k]) => el("span", { class: "chip" }, `${l}: ${v}`,
     k === "doc" && docRow ? enlaceAcc(urlDocumento(docRow, false), "abrir en ACC", "Abrir el documento en ACC") : null, el("button", { type: "button", "aria-label": `Quitar filtro ${l}`, onclick: () => { state[k] = ""; state.page = 0; render(); } }, "×"))));
@@ -426,21 +474,23 @@ function renderDetalle(rows) {
   const pags = Math.max(1, Math.ceil(fs.length / POR_PAGINA));
   state.page = Math.min(state.page, pags - 1);
   const vista = fs.slice(state.page * POR_PAGINA, (state.page + 1) * POR_PAGINA);
-  $("cuentaDetalle").textContent = `${fmt(fs.length)} incidencias · ordenadas por antigüedad (las no cerradas primero).`;
+  $("cuentaDetalle").textContent = `${fmt(fs.length)} ${fs.length === 1 ? "incidencia" : "incidencias"} · ordenadas por antigüedad (las no cerradas primero).`;
   llenar("tablaDetalle", el("table", {},
     el("thead", {}, el("tr", {}, ["ID", "Título", "Descripción", "Estado", "Revisor", "Documento", "Creado por", "Creado el", "Antig. (d)", "Comentarios"].map((t, i) => el("th", { class: i === 8 ? "num" : null }, t)))),
     el("tbody", {}, vista.map((r) => el("tr", {},
       el("td", {}, enlaceAcc(urlIncidencia(r), r.id, "Abrir la incidencia en ACC")), el("td", {}, r.titulo), el("td", { class: "desc" }, r.desc || "–"), el("td", {}, chipEstado(r)),
-      el("td", {}, r.rev), el("td", {}, enlaceAcc(urlDocumento(r), r.docCorto || r.doc || "–", (r.doc || "") + " · abrir en ACC con la marca de la incidencia")), el("td", {}, r.creador || "–"), el("td", {}, fecha(r.dCre)),
+      el("td", {}, r.rev), el("td", {}, enlaceAcc(urlDocumento(r), docVis(r), nomDoc(r) + " · abrir en ACC con la marca de la incidencia")), el("td", {}, r.creador || "–"), el("td", {}, fecha(r.dCre)),
       el("td", { class: "num" }, r.edad == null ? "–" : fmt1(r.edad)), el("td", { class: "coment" }, r.coment || ""))))));
+  const ir = (p) => { state.page = p; render(); };
+  const ini = state.page === 0 ? "" : null, fin = state.page >= pags - 1 ? "" : null;
   llenar("paginador",
-    el("button", { type: "button", class: "boton", disabled: state.page === 0 ? "" : null, onclick: () => { state.page--; render(); } }, "‹ Anterior"),
+    el("button", { type: "button", class: "boton", disabled: ini, onclick: () => ir(state.page - 1) }, "‹ Anterior"),
     `Página ${state.page + 1} de ${pags}`,
-    el("button", { type: "button", class: "boton", disabled: state.page >= pags - 1 ? "" : null, onclick: () => { state.page++; render(); } }, "Siguiente ›"));
+    el("button", { type: "button", class: "boton", disabled: fin, onclick: () => ir(state.page + 1) }, "Siguiente ›"));
 }
 function descargarCsv() {
   const fs = filasDetalle(filtrados());
-  const cols = [["ID", "id"], ["Título", "titulo"], ["Estado", "estado"], ["Le toca a", (r) => ({ P: "Sinohydro", R: "Revisor", C: "–" })[r.sit]], ["Revisor", "rev"], ["Tipo", "tipo"], ["Documento", "doc"],
+  const cols = [["ID", "id"], ["Título", "titulo"], ["Estado", "estado"], ["Le toca a", (r) => ({ P: "Sinohydro", R: "Revisor", C: "–" })[r.sit]], ["Revisor", "rev"], ["Tipo", "tipo"], ["Documento", nomDoc],
     ["Entregable", "entregable"], ["Tipo de revisión", "tipoRev"], ["Creado por", "creador"], ["Creado el", "creado"], ["Cerrado el", "cerrado"],
     ["Antigüedad (d)", (r) => (r.edad == null ? "" : r.edad.toFixed(1))], ["Causa raíz", "causa"], ["Criticidad", "crit"], ["Descripción", "desc"], ["Comentarios", "coment"],
     ["Enlace incidencia ACC", (r) => urlIncidencia(r)], ["Enlace documento ACC", (r) => urlDocumento(r)]];
@@ -512,9 +562,16 @@ async function iniciar() {
   llenar("fSit", el("option", { value: "" }, "Todos"), el("option", { value: "NC" }, "No cerradas"),
     el("optgroup", { label: "A quién le toca" }, el("option", { value: "P" }, "Sinohydro (Abierta, Pendiente, No aprobada)"), el("option", { value: "R" }, "Revisor (Borrador, Completada)")),
     el("optgroup", { label: "Estado en ACC" }, ESTADOS.map((e) => el("option", { value: e }, e))));
+  llenar("fEn", BUSCAR_EN.map(([v, t]) => el("option", { value: v }, t)));
+  opciones("fCre", "creador", "Todos");
+  const tsrs = [...new Set(DATA.map((r) => r.tsr || "(sin tipo)"))].sort((a, b) => a.localeCompare(b, "es"));
+  llenar("fTsr", el("option", { value: "" }, "Todos"), tsrs.map((v) => el("option", { value: v }, v)));
+  for (const [id, k] of [["fEn", "en"], ["fTsr", "tsr"], ["fCre", "cre"], ["fDesde", "desde"], ["fHasta", "hasta"], ["fAmin", "amin"]])
+    $(id).addEventListener("change", (e) => { state[k] = e.target.value; state.page = 0; render(); });
+  $("btnLimpiarAv").addEventListener("click", () => { Object.assign(state, { tsr: "", cre: "", desde: "", hasta: "", amin: "", page: 0 }); render(); });
   opciones("fRev", "rev", "Todos"); opciones("fEnt", "entregable", "Todos"); opciones("fTrv", "tipoRev", "Todos"); opciones("fFase", "fase", "Todas");
   for (const [id, k] of [["fRev", "rev"], ["fEnt", "ent"], ["fTrv", "trv"], ["fFase", "fase"]]) $(id).addEventListener("change", (e) => { state[k] = e.target.value; state.page = 0; render(); });
-  $("btnLimpiar").addEventListener("click", () => { Object.assign(state, { rev: "", ent: "", trv: "", fase: "", q: "", sit: "", doc: "", tsr: "", page: 0 }); render(); });
+  $("btnLimpiar").addEventListener("click", () => { Object.assign(state, { rev: "", ent: "", trv: "", fase: "", page: 0 }, LIMPIO_DET); render(); });
   document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => cambiarTab(b.dataset.tab)));
   let t; $("buscar").addEventListener("input", (e) => { clearTimeout(t); t = setTimeout(() => { state.q = e.target.value; state.page = 0; render(); $("buscar").focus(); }, 250); });
   $("fSit").addEventListener("change", (e) => { state.sit = e.target.value; state.page = 0; render(); });

@@ -9,9 +9,9 @@
   <link rel="icon" href="img/icono-32.png" type="image/png" sizes="32x32">
   <link rel="icon" href="img/icono-192.png" type="image/png" sizes="192x192">
   <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
-  <link rel="stylesheet" href="styles.css?v=16">
+  <link rel="stylesheet" href="styles.css?v=17">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" defer></script>
-  <script src="app.js?v=11" defer></script>
+  <script src="app.js?v=16" defer></script>
 </head>
 <body>
   <div class="barra-fija" id="barraFija">
@@ -137,13 +137,37 @@
     <section class="pagina" id="p-detalle" hidden>
       <article class="card">
         <div class="barra-detalle">
-          <input type="search" id="buscar" placeholder="Buscar en ID, título, descripción, documento, comentarios…" aria-label="Buscar">
+          <label>Buscar en
+            <select id="fEn"></select>
+          </label>
+          <input type="search" id="buscar" placeholder="Buscar en todo · usa #1000 para un ID exacto" aria-label="Buscar">
           <label>Estado
             <select id="fSit"></select>
           </label>
           <span id="chipsDetalle" class="chips"></span>
           <button type="button" id="btnCsv" class="boton">Descargar CSV</button>
         </div>
+        <details class="avanzados" id="avanzados">
+          <summary id="sumAvanzados">Filtros avanzados</summary>
+          <div class="barra-detalle">
+            <label>Especialidad (tipo)
+              <select id="fTsr"></select>
+            </label>
+            <label>Creado por
+              <select id="fCre"></select>
+            </label>
+            <label>Creado desde
+              <input type="date" id="fDesde">
+            </label>
+            <label>Creado hasta
+              <input type="date" id="fHasta">
+            </label>
+            <label>Antigüedad mínima (d)
+              <input type="number" id="fAmin" min="0" step="1" placeholder="p. ej. 30">
+            </label>
+            <button type="button" id="btnLimpiarAv" class="link">Limpiar avanzados</button>
+          </div>
+        </details>
         <p class="nota"><b>↗</b> ID abre la incidencia en ACC; Documento abre el archivo con la marca de la incidencia. Requiere sesión en ACC con acceso al proyecto.</p>
         <p class="nota" id="cuentaDetalle"></p>
         <div id="tablaDetalle" class="scroll"></div>

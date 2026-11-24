@@ -139,7 +139,7 @@ h2 { font-size: 14px; margin: 0 0 4px; font-weight: 600; }
   border-bottom: 1px solid var(--line);
 }
 .filtros label, .barra-detalle label { display: flex; flex-direction: column; font-size: 11px; color: var(--ink-3); gap: 2px; }
-select, input[type="search"] {
+select, input[type="search"], input[type="date"], input[type="number"] {
   font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line);
   border-radius: 6px; padding: 5px 8px; min-width: 150px;
 }
@@ -208,6 +208,9 @@ tbody tr.clic:hover { background: color-mix(in srgb, var(--accent) 8%, transpare
 
 .barra-detalle { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: end; margin-bottom: 8px; }
 .barra-detalle input[type="search"] { flex: 1 1 320px; }
+.barra-detalle input[type="number"] { min-width: 0; width: 120px; }
+.avanzados { margin: 0 0 8px; }
+.avanzados summary { cursor: pointer; color: var(--accent); font-size: 13px; padding: 2px 0 6px; width: fit-content; }
 .chips { display: flex; gap: 6px; flex-wrap: wrap; }
 .chip { display: inline-flex; gap: 6px; align-items: center; border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; font-size: 12px; background: var(--bg); }
 .chip button { background: none; border: 0; color: var(--ink-3); cursor: pointer; font-size: 14px; line-height: 1; padding: 0; }

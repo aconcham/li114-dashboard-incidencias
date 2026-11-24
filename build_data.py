@@ -135,9 +135,14 @@ def revisor(categoria):
 def segmentos(doc):
     if not doc:
         return None, None, None, None
-    partes = re.split(r"[-_]", doc)  # algunos archivos usan guion bajo en vez de guion
-    if len(partes) >= 8:
-        return partes[4], partes[5], partes[6], "-".join(partes[4:8])
+    partes = [p.strip() for p in re.split(r"[-_]", doc)]  # algunos archivos usan guion bajo en vez de guion
+    if len(partes) >= 8 and re.fullmatch(r"\d{6}", partes[0]):
+        # Código corto: se omiten los campos que valen lo habitual (proyecto 600015, originador SHYD1,
+        # activo 000, nivel XXX); los que difieren (p. ej. activo 225/226/227 = tramo) se conservan
+        # para que dos documentos distintos no queden con el mismo código corto.
+        fijos = ["600015", "SHYD1", "000", "XXX"]
+        cabeza = [p for p, f in zip(partes[:4], fijos) if p.upper() != f]
+        return partes[4], partes[5], partes[6], "-".join(cabeza + partes[4:8])
     return None, None, None, doc
 
 
@@ -222,6 +227,7 @@ def main():
             "venc": iso(venc) if txt(venc) else None,
             "doc": doc,
             "docCorto": dc,
+            "ext": archivo.rsplit(".", 1)[1].lower() if archivo and "." in archivo else None,
             "tipoDoc": td,
             "discDoc": dd,
             "fase": fd,
