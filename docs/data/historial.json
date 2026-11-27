@@ -550,5 +550,51 @@
     "Cerrada": 764
    }
   }
+ },
+ {
+  "corte": "2026-11-27T12:33",
+  "total": 2496,
+  "Total": {
+   "P": 547,
+   "R": 191,
+   "C": 1758,
+   "total": 2496,
+   "estados": {
+    "Borrador": 8,
+    "Abierta": 525,
+    "Pendiente": 1,
+    "Completada": 183,
+    "No aprobada": 21,
+    "Cerrada": 1758
+   }
+  },
+  "ANIN": {
+   "P": 282,
+   "R": 96,
+   "C": 992,
+   "total": 1370,
+   "estados": {
+    "Borrador": 4,
+    "Abierta": 281,
+    "Pendiente": 0,
+    "Completada": 92,
+    "No aprobada": 1,
+    "Cerrada": 992
+   }
+  },
+  "Supervisión": {
+   "P": 265,
+   "R": 95,
+   "C": 764,
+   "total": 1124,
+   "estados": {
+    "Borrador": 4,
+    "Abierta": 244,
+    "Pendiente": 1,
+    "Completada": 91,
+    "No aprobada": 20,
+    "Cerrada": 764
+   }
+  }
  }
 ]
